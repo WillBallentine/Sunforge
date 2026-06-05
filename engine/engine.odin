@@ -1,9 +1,14 @@
 package engine
 
 import core "./core"
+import rl "vendor:raylib"
 
 Window_Config :: core.Window_Config
 Action_ID :: core.Action_ID
+input_bind :: core.input_bind
+input_pressed :: core.input_pressed
+input_held :: core.input_held
+input_released :: core.input_released
 
 Engine_Config :: struct {
 	window: core.Window_Config,
@@ -66,11 +71,13 @@ scene_push :: proc(e: ^Engine, scene: Scene_Procs) {
 }
 
 tick :: proc(e: ^Engine) {
+	rl.BeginDrawing()
 	core.clock_tick(&e.clock)
 	core.input_poll(&e.input)
 
 	if e._scene.update != nil do e._scene.update(e, e._scene.data, e.clock.delta_time)
 
 	if e._scene.render != nil do e._scene.render(e, e._scene.data)
+	rl.EndDrawing()
 }
 

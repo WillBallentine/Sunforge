@@ -10,6 +10,7 @@ Action_State :: struct {
 	pressed:  bool,
 	held:     bool,
 	released: bool,
+	_prev:    bool,
 }
 
 Mouse_State :: struct {
@@ -35,24 +36,27 @@ input_bind :: proc(input: ^Input_State, id: Action_ID, key: rl.KeyboardKey) {
 
 input_poll :: proc(input: ^Input_State) {
 	for &action in input.actions {
-		action.pressed = rl.IsKeyPressed(action.key)
+		action._prev = action.held
 		action.held = rl.IsKeyDown(action.key)
-		action.released = rl.IsKeyReleased(action.key)
+		action.pressed = action.held && !action._prev
+		action.released = !action.held && action._prev
 	}
 
 	input.mouse.position = rl.GetMousePosition()
 	input.mouse.delta = rl.GetMouseDelta()
 	input.mouse.wheel = rl.GetMouseWheelMove()
 
-	poll_button :: proc(s: ^Action_State, btn: rl.MouseButton) {
-		s.pressed = rl.IsMouseButtonPressed(btn)
-		s.held = rl.IsMouseButtonDown(btn)
-		s.released = rl.IsMouseButtonReleased(btn)
-	}
+	input.mouse.left.pressed = rl.IsMouseButtonPressed(.LEFT)
+	input.mouse.left.held = rl.IsMouseButtonDown(.LEFT)
+	input.mouse.left.released = rl.IsMouseButtonReleased(.LEFT)
 
-	poll_button(&input.mouse.left, .LEFT)
-	poll_button(&input.mouse.right, .RIGHT)
-	poll_button(&input.mouse.middle, .MIDDLE)
+	input.mouse.right.pressed = rl.IsMouseButtonPressed(.RIGHT)
+	input.mouse.right.held = rl.IsMouseButtonDown(.RIGHT)
+	input.mouse.right.released = rl.IsMouseButtonReleased(.RIGHT)
+
+	input.mouse.middle.pressed = rl.IsMouseButtonPressed(.MIDDLE)
+	input.mouse.middle.held = rl.IsMouseButtonDown(.MIDDLE)
+	input.mouse.middle.released = rl.IsMouseButtonReleased(.MIDDLE)
 }
 
 input_pressed :: proc(input: ^Input_State, id: Action_ID) -> bool {

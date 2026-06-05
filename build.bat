@@ -1,2 +1,2 @@
 @echo off
-odin build . -debug -out:game_debug.exe
+odin build . -debug -subsystem:windows -out:game_debug.exe
