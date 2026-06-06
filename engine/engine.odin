@@ -1,6 +1,7 @@
 package engine
 
 import core "./core"
+import rend "./renderer"
 import rl "vendor:raylib"
 
 Window_Config :: core.Window_Config
@@ -9,6 +10,22 @@ input_bind :: core.input_bind
 input_pressed :: core.input_pressed
 input_held :: core.input_held
 input_released :: core.input_released
+Render_Target :: rend.Render_Target
+renderer_init :: rend.renderer_init
+renderer_make_target :: rend.renderer_make_target
+renderer_destroy_target :: rend.renderer_destroy_target
+renderer_begin_target :: rend.renderer_begin_target
+renderer_end_target :: rend.renderer_end_target
+renderer_clear :: rend.renderer_clear
+renderer_blit :: rend.renderer_blit
+renderer_blit_shader :: rend.renderer_blit_shader
+renderer_begin_camera :: rend.renderer_begin_camera
+renderer_end_camera :: rend.renderer_end_camera
+renderer_draw_texture :: rend.renderer_draw_texture
+renderer_draw_rect :: rend.renderer_draw_rect
+renderer_draw_circle :: rend.renderer_draw_circle
+renderer_draw_line :: rend.renderer_draw_line
+renderer_draw_text :: rend.renderer_draw_text
 
 Engine_Config :: struct {
 	window: core.Window_Config,
@@ -24,11 +41,11 @@ Scene_Procs :: struct {
 
 
 Engine :: struct {
-	window: core.Window_State,
-	clock:  core.Clock_State,
-	input:  core.Input_State,
+	window:   core.Window_State,
+	clock:    core.Clock_State,
+	input:    core.Input_State,
 	//assets:   Asset_Cache,
-	//renderer: Renderer_State,
+	renderer: rend.Renderer_State,
 	//physics:  Physics_World,
 	//audio:    Audio_State,
 	//entities: Entity_Pool,
@@ -36,7 +53,7 @@ Engine :: struct {
 	//shaders:  Shader_State,
 	//timers:   Timer_System,
 	//ui:       UI_Context,
-	_scene: Scene_Procs,
+	_scene:   Scene_Procs,
 }
 
 run :: proc(config: Engine_Config, first_scene: Scene_Procs) {
@@ -53,10 +70,12 @@ init :: proc(e: ^Engine, config: Engine_Config) {
 	core.window_init(&e.window, config.window)
 	core.clock_init(&e.clock)
 	core.input_init(&e.input)
+	rend.renderer_init(&e.renderer, config.window.width, config.window.height)
 }
 
 shutdown :: proc(e: ^Engine) {
 	if e._scene.destroy != nil do e._scene.destroy(e, e._scene.data)
+	rend.renderer_shutdown(&e.renderer)
 	core.window_shutdown(&e.window)
 }
 
