@@ -59,8 +59,20 @@ renderer_clear :: proc(color: rl.Color) {
 	rl.ClearBackground(color)
 }
 
+draw_texture :: proc {
+	renderer_draw_texture,
+	renderer_draw_sprite,
+}
+
 renderer_draw_texture :: proc(texture: rl.Texture2D, src, dest: rl.Rectangle, tint: rl.Color) {
 	rl.DrawTexturePro(texture, src, dest, {0, 0}, 0, tint)
+}
+
+draw_basic_shape :: proc {
+	renderer_draw_circle,
+	renderer_draw_line,
+	renderer_draw_rect,
+	renderer_draw_text,
 }
 
 renderer_draw_rect :: proc(rect: rl.Rectangle, thickness: f32, color: rl.Color) {

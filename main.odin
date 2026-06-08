@@ -83,14 +83,14 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.renderer_clear(rl.BLACK)
 	eng.renderer_begin_camera(s.camera)
 	eng.renderer_draw_text(cstring("hello world"), i32(50), i32(50), i32(100), rl.BLUE)
-	eng.renderer_draw_circle(rl.Vector2(10), f32(100.00), rl.WHITE)
+	//eng.renderer_draw_circle(rl.Vector2(10), f32(100.00), rl.WHITE)
 	eng.renderer_end_camera()
 	eng.renderer_end_target()
 
 	eng.renderer_begin_target(s.ui_target)
 	eng.renderer_clear({0, 0, 0, 0})
-	eng.renderer_draw_text(cstring("hello ui"), i32(90), i32(90), i32(100), rl.GREEN)
-	eng.renderer_draw_rect(rl.Rectangle{f32(150), f32(15), f32(25), f32(25)}, f32(25), rl.GREEN)
+	eng.renderer_draw_text(cstring("hello ui"), i32(690), i32(400), i32(100), rl.GREEN)
+	//eng.renderer_draw_rect(rl.Rectangle{f32(150), f32(15), f32(25), f32(25)}, f32(25), rl.GREEN)
 	eng.renderer_end_target()
 
 	eng.renderer_blit(&e.renderer, s.world_target)
