@@ -21,11 +21,19 @@ renderer_blit :: rend.renderer_blit
 renderer_blit_shader :: rend.renderer_blit_shader
 renderer_begin_camera :: rend.renderer_begin_camera
 renderer_end_camera :: rend.renderer_end_camera
-renderer_draw_texture :: rend.renderer_draw_texture
+draw_texture :: rend.draw_texture
 renderer_draw_rect :: rend.renderer_draw_rect
 renderer_draw_circle :: rend.renderer_draw_circle
 renderer_draw_line :: rend.renderer_draw_line
 renderer_draw_text :: rend.renderer_draw_text
+get_sprite :: rend.get_sprite
+Flip :: rend.Flip
+Animation :: rend.Animation
+Animation_State :: rend.Animation_State
+create_animation_state :: rend.animation_state_create
+reset_animation_state :: rend.animation_state_reset
+get_sprite_for_animation :: rend.animation_state_get_sprite
+update_animation_state :: rend.animation_state_update
 
 Engine_Config :: struct {
 	window: core.Window_Config,

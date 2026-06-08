@@ -13,6 +13,11 @@ Flip :: enum {
 	VERTICAL,
 }
 
+get_sprite :: proc {
+	sprite_from_grid_sheet,
+	sprite_from_row_sheet,
+}
+
 sprite_from_row_sheet :: proc(
 	texture: rl.Texture2D,
 	frame_w, frame_h, frame_index: i32,
@@ -38,7 +43,7 @@ sprite_from_grid_sheet :: proc(
 		texture = texture,
 		src = rl.Rectangle {
 			x = f32(col * frame_w),
-			y = f32(col * frame_h),
+			y = f32(row * frame_h),
 			width = f32(frame_w),
 			height = f32(frame_h),
 		},
