@@ -3,6 +3,7 @@ package main
 import eng "./engine"
 import "core:fmt"
 import "core:sys/llvm"
+import "vendor:glfw/bindings"
 import rl "vendor:raylib"
 
 Game_Action :: enum u32 {
@@ -67,13 +68,22 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Title_State)data
 	//eng.toggle_fullscreen(&e.window)
 
-	eng.input_bind(&e.input, act(.Jump), .ENTER)
-	eng.input_bind(&e.input, act(.Back), .J)
-	eng.input_bind(&e.input, act(.Move_Left), .A)
-	eng.input_bind(&e.input, act(.Move_Right), .D)
-	eng.input_bind(&e.input, act(.Move_Up), .W)
-	eng.input_bind(&e.input, act(.Move_Down), .S)
-	eng.input_bind(&e.input, act(.UP_Arrow), .SPACE)
+	//keyboard bindings
+	eng.input_bind_keyboard(&e.input, act(.Jump), .ENTER)
+	eng.input_bind_keyboard(&e.input, act(.Back), .J)
+	eng.input_bind_keyboard(&e.input, act(.Move_Left), .A)
+	eng.input_bind_keyboard(&e.input, act(.Move_Right), .D)
+	eng.input_bind_keyboard(&e.input, act(.Move_Up), .W)
+	eng.input_bind_keyboard(&e.input, act(.Move_Down), .S)
+	eng.input_bind_keyboard(&e.input, act(.UP_Arrow), .SPACE)
+
+	//controller bindings
+	eng.input_bind_controller(&e.input, act(.Move_Left), .LEFT_FACE_LEFT)
+	eng.input_bind_controller(&e.input, act(.Move_Right), .LEFT_FACE_RIGHT)
+	eng.input_bind_controller(&e.input, act(.Move_Down), .LEFT_FACE_DOWN)
+	eng.input_bind_controller(&e.input, act(.Move_Up), .LEFT_FACE_UP)
+	eng.input_bind_controller(&e.input, act(.Jump), .RIGHT_FACE_RIGHT)
+
 	s.world_target = eng.make_render_target(&e.renderer)
 	s.ui_target = eng.make_render_target(&e.renderer)
 	s.sprite = rl.LoadTexture("./test.png")
@@ -125,8 +135,27 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	s := cast(^Title_State)data
 	s.timer += dt
 	s.mouse_pos = e.input.mouse.position
-
 	s.mouse_delta = e.input.mouse.delta
+
+	PLAYER_SPEED :: f32(200)
+	move_x: f32
+	move_y: f32
+
+	if eng.input_held(&e.input, act(.Move_Left)) do move_x -= 1
+	if eng.input_held(&e.input, act(.Move_Right)) do move_x += 1
+	if eng.input_held(&e.input, act(.Move_Up)) do move_y -= 1
+	if eng.input_held(&e.input, act(.Move_Down)) do move_y += 1
+
+	if move_x == 0 do move_x = e.input.controller.left_stick.x
+	if move_y == 0 do move_y = e.input.controller.left_stick.y
+
+	s.player_position.x += move_x * PLAYER_SPEED * dt
+	s.player_position.y += move_y * PLAYER_SPEED * dt
+
+	moving := move_x != 0 || move_y != 0
+
+	if move_x < 0 do s.player_facing = .HORIZONTAL
+	if move_x > 0 do s.player_facing = .NONE
 
 	if eng.input_pressed(&e.input, act(.UP_Arrow)) {
 		new_height := e.window.height + 50
@@ -134,29 +163,10 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 		eng.draw_basic_shape(fmt.ctprintf("new height: %s", new_height), 100, 100, 100, rl.WHITE)
 		eng.set_window_size(&e.window, new_width, new_height)
 	}
-
-	moving := e.input.mouse.left.held
-	if eng.input_held(&e.input, act(.Move_Left)) {
-		s.player_facing = .HORIZONTAL
-		s.player_position.x -= 5
-		moving = true
-	}
-	if eng.input_held(&e.input, act(.Move_Right)) {
-		s.player_facing = .NONE
-		s.player_position.x += 5
-		moving = true
-	}
-	if eng.input_held(&e.input, act(.Move_Up)) {
-		s.player_position.y -= 5
-		moving = true
-	}
-	if eng.input_held(&e.input, act(.Move_Down)) {
-		s.player_position.y += 5
-		moving = true
-	}
 	if eng.input_pressed(&e.input, act(.Back)) {
 		s.anim_state.paused = !s.anim_state.paused
 	}
+
 	flip_triggered := eng.input_pressed(&e.input, act(.Jump))
 	currently_flipping := s.anim_state.anim == &s.flip_anim && !s.anim_state.finished
 	target_anim: ^eng.Animation

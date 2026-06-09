@@ -8,7 +8,8 @@ Window_Config :: core.Window_Config
 Action_ID :: core.Action_ID
 set_window_size :: core.window_set_size
 toggle_fullscreen :: core.window_toggle_fullscreen
-input_bind :: core.input_bind
+input_bind_keyboard :: core.input_bind_keyboard
+input_bind_controller :: core.input_bind_controller
 input_pressed :: core.input_pressed
 input_held :: core.input_held
 input_released :: core.input_released
