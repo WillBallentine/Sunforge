@@ -9,6 +9,7 @@ Renderer_State :: struct {
 	logical_height: i32,
 	screen_width:   i32,
 	screen_height:  i32,
+	viewport:       rl.Rectangle,
 }
 
 Render_Target :: rl.RenderTexture2D
@@ -59,6 +60,7 @@ renderer_blit :: proc(state: ^Renderer_State, target: Render_Target) {
 
 	src := rl.Rectangle{0, 0, f32(target.texture.width), -f32(target.texture.height)}
 	dest := rl.Rectangle{dest_x, dest_y, dest_w, dest_h}
+	state.viewport = dest
 	rl.DrawTexturePro(target.texture, src, dest, {0, 0}, 0, rl.WHITE)
 }
 
@@ -68,12 +70,30 @@ renderer_blit_shader :: proc(state: ^Renderer_State, target: Render_Target, shad
 	rl.EndShaderMode()
 }
 
-renderer_begin_camera :: proc(camera: rl.Camera2D) {
-	rl.BeginMode2D(camera)
+renderer_screen_to_world :: proc(
+	viewport: rl.Rectangle,
+	locical_w: i32,
+	cam: Camera_State,
+	screen_pos: rl.Vector2,
+) -> rl.Vector2 {
+	scale := viewport.width / f32(locical_w)
+	logical_pos := rl.Vector2 {
+		(screen_pos.x - viewport.x) / scale,
+		(screen_pos.y - viewport.y) / scale,
+	}
+
+	return rl.GetScreenToWorld2D(logical_pos, cam.camera)
 }
 
-renderer_end_camera :: proc() {
-	rl.EndMode2D()
+renderer_world_to_screen :: proc(
+	viewport: rl.Rectangle,
+	logical_w: i32,
+	cam: Camera_State,
+	world_pos: rl.Vector2,
+) -> rl.Vector2 {
+	logical_pos := rl.GetWorldToScreen2D(world_pos, cam.camera)
+	scale := viewport.width / f32(logical_w)
+	return rl.Vector2{logical_pos.x * scale + viewport.x, logical_pos.y * scale + viewport.y}
 }
 
 renderer_clear :: proc(color: rl.Color) {

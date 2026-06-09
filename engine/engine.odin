@@ -14,7 +14,14 @@ input_pressed :: core.input_pressed
 input_held :: core.input_held
 input_released :: core.input_released
 Render_Target :: rend.Render_Target
+Camera_State :: rend.Camera_State
+camera_init :: rend.camera_init
+camera_follow :: rend.camera_follow
+add_trauma :: rend.add_trauma
+update_camera :: rend.update_camera
 renderer_init :: rend.renderer_init
+world_to_screen :: rend.renderer_world_to_screen
+screen_to_world :: rend.renderer_screen_to_world
 make_render_target :: rend.renderer_make_target
 destroy_render_target :: rend.renderer_destroy_target
 begin_render_target :: rend.renderer_begin_target
