@@ -2,6 +2,7 @@ package main
 
 import eng "./engine"
 import "core:fmt"
+import "core:sys/llvm"
 import rl "vendor:raylib"
 
 Game_Action :: enum u32 {
@@ -12,6 +13,7 @@ Game_Action :: enum u32 {
 	Jump,
 	Confirm,
 	Back,
+	UP_Arrow,
 }
 
 act :: #force_inline proc(a: Game_Action) -> eng.Action_ID {
@@ -26,6 +28,7 @@ main :: proc() {
 				height = 720,
 				title = "test",
 				target_fps = 60,
+				is_resizeable = true,
 			},
 		},
 		title_screen(),
@@ -62,13 +65,15 @@ title_screen :: proc() -> eng.Scene_Procs {
 
 title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Title_State)data
+	//eng.toggle_fullscreen(&e.window)
 
 	eng.input_bind(&e.input, act(.Jump), .ENTER)
-	eng.input_bind(&e.input, act(.Back), .SPACE)
+	eng.input_bind(&e.input, act(.Back), .J)
 	eng.input_bind(&e.input, act(.Move_Left), .A)
 	eng.input_bind(&e.input, act(.Move_Right), .D)
 	eng.input_bind(&e.input, act(.Move_Up), .W)
 	eng.input_bind(&e.input, act(.Move_Down), .S)
+	eng.input_bind(&e.input, act(.UP_Arrow), .SPACE)
 	s.world_target = eng.make_render_target(&e.renderer)
 	s.ui_target = eng.make_render_target(&e.renderer)
 	s.sprite = rl.LoadTexture("./test.png")
@@ -110,7 +115,7 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s.anim_state = eng.create_animation_state(&s.idle_anim)
 
 	s.camera = rl.Camera2D {
-		offset = {f32(e.renderer.width) / 2, f32(e.renderer.height) / 2},
+		offset = {f32(e.renderer.logical_width) / 2, f32(e.renderer.logical_height) / 2},
 		target = s.player_position,
 		zoom   = 1.0,
 	}
@@ -122,6 +127,14 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	s.mouse_pos = e.input.mouse.position
 
 	s.mouse_delta = e.input.mouse.delta
+
+	if eng.input_pressed(&e.input, act(.UP_Arrow)) {
+		new_height := e.window.height + 50
+		new_width := e.window.width + 50
+		eng.draw_basic_shape(fmt.ctprintf("new height: %s", new_height), 100, 100, 100, rl.WHITE)
+		eng.set_window_size(&e.window, new_width, new_height)
+	}
+
 	moving := e.input.mouse.left.held
 	if eng.input_held(&e.input, act(.Move_Left)) {
 		s.player_facing = .HORIZONTAL
@@ -133,11 +146,11 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 		s.player_position.x += 5
 		moving = true
 	}
-	if eng.input_held(&e.input, act(.Move_Up)){
+	if eng.input_held(&e.input, act(.Move_Up)) {
 		s.player_position.y -= 5
 		moving = true
 	}
-	if eng.input_held(&e.input, act(.Move_Down)){
+	if eng.input_held(&e.input, act(.Move_Down)) {
 		s.player_position.y += 5
 		moving = true
 	}
@@ -184,8 +197,10 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	// 	eng.renderer_clear(rl.BLACK)
 	// }
 
+	eng.draw_basic_shape(cstring("Sunforge Testing"), 0, 0, 48, rl.GREEN)
 	sprite := eng.get_sprite_for_animation(&s.anim_state)
 	eng.draw_texture(sprite, s.player_position, 2.0, s.player_facing, rl.WHITE)
+
 
 	eng.end_camera()
 	eng.end_render_target()
@@ -194,15 +209,23 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.renderer_clear({0, 0, 0, 0})
 	//eng.draw_basic_shape(cstring("hello ui"), i32(690), i32(400), i32(100), rl.GREEN)
 	//eng.renderer_draw_rect(rl.Rectangle{f32(150), f32(15), f32(25), f32(25)}, f32(25), rl.GREEN)
-	eng.end_render_target()
-
-	eng.blit(&e.renderer, s.world_target)
-	eng.blit(&e.renderer, s.ui_target)
 	//debug inputs
 	//keyboard
-	eng.draw_basic_shape(fmt.ctprintf("pressed: %v", e.input.actions[3].pressed), 10, 30, 16, rl.YELLOW)
+	eng.draw_basic_shape(
+		fmt.ctprintf("pressed: %v", e.input.actions[3].pressed),
+		10,
+		30,
+		16,
+		rl.YELLOW,
+	)
 	eng.draw_basic_shape(fmt.ctprintf("held: %v", e.input.actions[3].held), 10, 50, 16, rl.YELLOW)
-	eng.draw_basic_shape(fmt.ctprintf("released: %v", e.input.actions[3].released), 10, 70, 16, rl.YELLOW)
+	eng.draw_basic_shape(
+		fmt.ctprintf("released: %v", e.input.actions[3].released),
+		10,
+		70,
+		16,
+		rl.YELLOW,
+	)
 	eng.draw_basic_shape(fmt.ctprintf("player pos: %v", s.player_position), 10, 280, 16, rl.YELLOW)
 
 	//mouse
@@ -229,8 +252,6 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	//end debug inputs
 
-	eng.draw_basic_shape(cstring("Sunforge Testing"), 800, 90, 48, rl.GREEN)
-
 	eng.draw_basic_shape(fmt.ctprintf("mouse pos: %v", s.mouse_pos), 10, 100, 16, rl.YELLOW)
 	eng.draw_basic_shape(fmt.ctprintf("mouse delta: %v", s.mouse_delta), 10, 140, 16, rl.YELLOW)
 	eng.draw_basic_shape(
@@ -240,7 +261,13 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 		16,
 		rl.YELLOW,
 	)
-	eng.draw_basic_shape(fmt.ctprintf("mouse held: %v", e.input.mouse.left.held), 10, 160, 16, rl.YELLOW)
+	eng.draw_basic_shape(
+		fmt.ctprintf("mouse held: %v", e.input.mouse.left.held),
+		10,
+		160,
+		16,
+		rl.YELLOW,
+	)
 	eng.draw_basic_shape(
 		fmt.ctprintf("mouse released: %v", e.input.mouse.left.released),
 		10,
@@ -248,7 +275,17 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 		16,
 		rl.YELLOW,
 	)
-	eng.draw_basic_shape(fmt.ctprintf("mouse wheel: %v", e.input.mouse.wheel), 10, 260, 16, rl.YELLOW)
+	eng.draw_basic_shape(
+		fmt.ctprintf("mouse wheel: %v", e.input.mouse.wheel),
+		10,
+		260,
+		16,
+		rl.YELLOW,
+	)
+	eng.end_render_target()
+
+	eng.blit(&e.renderer, s.world_target)
+	eng.blit(&e.renderer, s.ui_target)
 }
 
 title_destroy :: proc(e: ^eng.Engine, data: rawptr) {

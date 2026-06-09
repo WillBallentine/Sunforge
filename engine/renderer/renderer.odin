@@ -5,22 +5,26 @@ import rl "vendor:raylib"
 //do i need a renderer_config??
 
 Renderer_State :: struct {
-	width:  i32,
-	height: i32,
+	logical_width:  i32,
+	logical_height: i32,
+	screen_width:   i32,
+	screen_height:  i32,
 }
 
 Render_Target :: rl.RenderTexture2D
 
 renderer_init :: proc(state: ^Renderer_State, width, height: i32) {
-	state.height = height
-	state.width = width
+	state.logical_height = height
+	state.logical_width = width
+	state.screen_height = height
+	state.screen_width = width
 }
 
 renderer_shutdown :: proc(state: ^Renderer_State) {
 }
 
 renderer_make_target :: proc(state: ^Renderer_State) -> Render_Target {
-	return rl.LoadRenderTexture(state.width, state.height)
+	return rl.LoadRenderTexture(state.logical_width, state.logical_height)
 }
 
 renderer_destroy_target :: proc(target: Render_Target) {
@@ -36,8 +40,25 @@ renderer_end_target :: proc() {
 }
 
 renderer_blit :: proc(state: ^Renderer_State, target: Render_Target) {
+	logical_aspect := f32(state.logical_width) / f32(state.logical_height)
+	screen_aspect := f32(state.screen_width) / f32(state.screen_height)
+
+	dest_w, dest_h, dest_x, dest_y: f32
+
+	if screen_aspect >= logical_aspect {
+		dest_h = f32(state.screen_height)
+		dest_w = dest_h * logical_aspect
+		dest_x = (f32(state.screen_width) - dest_w) / 2
+		dest_y = 0
+	} else {
+		dest_w = f32(state.screen_width)
+		dest_h = dest_w / logical_aspect
+		dest_x = 0
+		dest_y = (f32(state.screen_height) - dest_h) / 2
+	}
+
 	src := rl.Rectangle{0, 0, f32(target.texture.width), -f32(target.texture.height)}
-	dest := rl.Rectangle{0, 0, f32(state.width), f32(state.height)}
+	dest := rl.Rectangle{dest_x, dest_y, dest_w, dest_h}
 	rl.DrawTexturePro(target.texture, src, dest, {0, 0}, 0, rl.WHITE)
 }
 
@@ -89,5 +110,10 @@ renderer_draw_line :: proc(start, end: rl.Vector2, thickness: f32, color: rl.Col
 
 renderer_draw_text :: proc(text: cstring, x, y, size: i32, color: rl.Color) {
 	rl.DrawText(text, x, y, size, color)
+}
+
+renderer_handle_resize :: proc(state: ^Renderer_State, w, h: i32) {
+	state.screen_width = w
+	state.screen_height = h
 }
 

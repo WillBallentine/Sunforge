@@ -6,6 +6,8 @@ import rl "vendor:raylib"
 
 Window_Config :: core.Window_Config
 Action_ID :: core.Action_ID
+set_window_size :: core.window_set_size
+toggle_fullscreen :: core.window_toggle_fullscreen
 input_bind :: core.input_bind
 input_pressed :: core.input_pressed
 input_held :: core.input_held
@@ -95,6 +97,12 @@ scene_push :: proc(e: ^Engine, scene: Scene_Procs) {
 }
 
 tick :: proc(e: ^Engine) {
+	if rl.IsWindowResized() {
+		new_width := rl.GetScreenWidth()
+		new_height := rl.GetScreenHeight()
+		core.window_handle_resize(&e.window, new_width, new_height)
+		rend.renderer_handle_resize(&e.renderer, new_width, new_height)
+	}
 	rl.BeginDrawing()
 	core.clock_tick(&e.clock)
 	core.input_poll(&e.input)
