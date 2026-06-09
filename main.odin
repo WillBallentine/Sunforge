@@ -69,8 +69,8 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.input_bind(&e.input, act(.Move_Right), .D)
 	eng.input_bind(&e.input, act(.Move_Up), .W)
 	eng.input_bind(&e.input, act(.Move_Down), .S)
-	s.world_target = eng.renderer_make_target(&e.renderer)
-	s.ui_target = eng.renderer_make_target(&e.renderer)
+	s.world_target = eng.make_render_target(&e.renderer)
+	s.ui_target = eng.make_render_target(&e.renderer)
 	s.sprite = rl.LoadTexture("./test.png")
 	s.player_facing = .HORIZONTAL
 
@@ -169,11 +169,11 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Title_State)data
 
-	eng.renderer_begin_target(s.world_target)
+	eng.begin_render_target(s.world_target)
 	eng.renderer_clear(rl.BLACK)
-	eng.renderer_begin_camera(s.camera)
-	//eng.renderer_draw_text(cstring("hello world"), i32(50), i32(50), i32(100), rl.BLUE)
-	//eng.renderer_draw_circle(rl.Vector2(10), f32(100.00), rl.WHITE)
+	eng.begin_camera(s.camera)
+	//eng.draw_basic_shape(cstring("hello world"), i32(50), i32(50), i32(100), rl.BLUE)
+	//eng.draw_basic_shape(rl.Vector2(10), f32(100.00), rl.WHITE)
 	//
 	// show all sprites on screen
 	// start := 7
@@ -187,39 +187,39 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	sprite := eng.get_sprite_for_animation(&s.anim_state)
 	eng.draw_texture(sprite, s.player_position, 2.0, s.player_facing, rl.WHITE)
 
-	eng.renderer_end_camera()
-	eng.renderer_end_target()
+	eng.end_camera()
+	eng.end_render_target()
 
-	eng.renderer_begin_target(s.ui_target)
+	eng.begin_render_target(s.ui_target)
 	eng.renderer_clear({0, 0, 0, 0})
-	//eng.renderer_draw_text(cstring("hello ui"), i32(690), i32(400), i32(100), rl.GREEN)
+	//eng.draw_basic_shape(cstring("hello ui"), i32(690), i32(400), i32(100), rl.GREEN)
 	//eng.renderer_draw_rect(rl.Rectangle{f32(150), f32(15), f32(25), f32(25)}, f32(25), rl.GREEN)
-	eng.renderer_end_target()
+	eng.end_render_target()
 
-	eng.renderer_blit(&e.renderer, s.world_target)
-	eng.renderer_blit(&e.renderer, s.ui_target)
+	eng.blit(&e.renderer, s.world_target)
+	eng.blit(&e.renderer, s.ui_target)
 	//debug inputs
 	//keyboard
-	rl.DrawText(fmt.ctprintf("pressed: %v", e.input.actions[3].pressed), 10, 30, 16, rl.YELLOW)
-	rl.DrawText(fmt.ctprintf("held: %v", e.input.actions[3].held), 10, 50, 16, rl.YELLOW)
-	rl.DrawText(fmt.ctprintf("released: %v", e.input.actions[3].released), 10, 70, 16, rl.YELLOW)
+	eng.draw_basic_shape(fmt.ctprintf("pressed: %v", e.input.actions[3].pressed), 10, 30, 16, rl.YELLOW)
+	eng.draw_basic_shape(fmt.ctprintf("held: %v", e.input.actions[3].held), 10, 50, 16, rl.YELLOW)
+	eng.draw_basic_shape(fmt.ctprintf("released: %v", e.input.actions[3].released), 10, 70, 16, rl.YELLOW)
 
 	//mouse
-	rl.DrawText(
+	eng.draw_basic_shape(
 		fmt.ctprintf("left mouse pressed: %v", e.input.mouse.left.pressed),
 		10,
 		200,
 		16,
 		rl.YELLOW,
 	)
-	rl.DrawText(
+	eng.draw_basic_shape(
 		fmt.ctprintf("left mouse held: %v", e.input.mouse.left.held),
 		10,
 		220,
 		16,
 		rl.YELLOW,
 	)
-	rl.DrawText(
+	eng.draw_basic_shape(
 		fmt.ctprintf("left mouse released: %v", e.input.mouse.left.released),
 		10,
 		240,
@@ -228,33 +228,33 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	//end debug inputs
 
-	rl.DrawText("Sunforge Testing", 800, 90, 48, rl.GREEN)
+	eng.draw_basic_shape(cstring("Sunforge Testing"), 800, 90, 48, rl.GREEN)
 
-	rl.DrawText(fmt.ctprintf("mouse pos: %v", s.mouse_pos), 10, 100, 16, rl.YELLOW)
-	rl.DrawText(fmt.ctprintf("mouse delta: %v", s.mouse_delta), 10, 140, 16, rl.YELLOW)
-	rl.DrawText(
+	eng.draw_basic_shape(fmt.ctprintf("mouse pos: %v", s.mouse_pos), 10, 100, 16, rl.YELLOW)
+	eng.draw_basic_shape(fmt.ctprintf("mouse delta: %v", s.mouse_delta), 10, 140, 16, rl.YELLOW)
+	eng.draw_basic_shape(
 		fmt.ctprintf("mouse pressed: %v", e.input.mouse.left.pressed),
 		10,
 		120,
 		16,
 		rl.YELLOW,
 	)
-	rl.DrawText(fmt.ctprintf("mouse held: %v", e.input.mouse.left.held), 10, 160, 16, rl.YELLOW)
-	rl.DrawText(
+	eng.draw_basic_shape(fmt.ctprintf("mouse held: %v", e.input.mouse.left.held), 10, 160, 16, rl.YELLOW)
+	eng.draw_basic_shape(
 		fmt.ctprintf("mouse released: %v", e.input.mouse.left.released),
 		10,
 		180,
 		16,
 		rl.YELLOW,
 	)
-	rl.DrawText(fmt.ctprintf("mouse wheel: %v", e.input.mouse.wheel), 10, 260, 16, rl.YELLOW)
+	eng.draw_basic_shape(fmt.ctprintf("mouse wheel: %v", e.input.mouse.wheel), 10, 260, 16, rl.YELLOW)
 }
 
 title_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Title_State)data
 
-	eng.renderer_destroy_target(s.world_target)
-	eng.renderer_destroy_target(s.ui_target)
+	eng.destroy_render_target(s.world_target)
+	eng.destroy_render_target(s.ui_target)
 	free(data)
 }
 
