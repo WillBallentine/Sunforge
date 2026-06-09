@@ -125,20 +125,20 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	moving := e.input.mouse.left.held
 	if eng.input_held(&e.input, act(.Move_Left)) {
 		s.player_facing = .HORIZONTAL
-		s.player_position.x -= 10
+		s.player_position.x -= 5
 		moving = true
 	}
 	if eng.input_held(&e.input, act(.Move_Right)) {
 		s.player_facing = .NONE
-		s.player_position.x += 10
+		s.player_position.x += 5
 		moving = true
 	}
 	if eng.input_held(&e.input, act(.Move_Up)){
-		s.player_position.y -= 10
+		s.player_position.y -= 5
 		moving = true
 	}
 	if eng.input_held(&e.input, act(.Move_Down)){
-		s.player_position.y += 10
+		s.player_position.y += 5
 		moving = true
 	}
 	if eng.input_pressed(&e.input, act(.Back)) {
@@ -203,6 +203,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.draw_basic_shape(fmt.ctprintf("pressed: %v", e.input.actions[3].pressed), 10, 30, 16, rl.YELLOW)
 	eng.draw_basic_shape(fmt.ctprintf("held: %v", e.input.actions[3].held), 10, 50, 16, rl.YELLOW)
 	eng.draw_basic_shape(fmt.ctprintf("released: %v", e.input.actions[3].released), 10, 70, 16, rl.YELLOW)
+	eng.draw_basic_shape(fmt.ctprintf("player pos: %v", s.player_position), 10, 280, 16, rl.YELLOW)
 
 	//mouse
 	eng.draw_basic_shape(
