@@ -7,6 +7,8 @@ import rl "vendor:raylib"
 Game_Action :: enum u32 {
 	Move_Left,
 	Move_Right,
+	Move_Up,
+	Move_Down,
 	Jump,
 	Confirm,
 	Back,
@@ -64,6 +66,9 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.input_bind(&e.input, act(.Jump), .ENTER)
 	eng.input_bind(&e.input, act(.Back), .SPACE)
 	eng.input_bind(&e.input, act(.Move_Left), .A)
+	eng.input_bind(&e.input, act(.Move_Right), .D)
+	eng.input_bind(&e.input, act(.Move_Up), .W)
+	eng.input_bind(&e.input, act(.Move_Down), .S)
 	s.world_target = eng.renderer_make_target(&e.renderer)
 	s.ui_target = eng.renderer_make_target(&e.renderer)
 	s.sprite = rl.LoadTexture("./test.png")
@@ -118,9 +123,22 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 
 	s.mouse_delta = e.input.mouse.delta
 	moving := e.input.mouse.left.held
-	if eng.input_pressed(&e.input, act(.Move_Left)) {
+	if eng.input_held(&e.input, act(.Move_Left)) {
 		s.player_facing = .HORIZONTAL
 		s.player_position.x -= 10
+		moving = true
+	}
+	if eng.input_held(&e.input, act(.Move_Right)) {
+		s.player_facing = .NONE
+		s.player_position.x += 10
+		moving = true
+	}
+	if eng.input_held(&e.input, act(.Move_Up)){
+		s.player_position.y -= 10
+		moving = true
+	}
+	if eng.input_held(&e.input, act(.Move_Down)){
+		s.player_position.y += 10
 		moving = true
 	}
 	if eng.input_pressed(&e.input, act(.Back)) {
