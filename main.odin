@@ -62,6 +62,8 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Title_State)data
 
 	eng.input_bind(&e.input, act(.Jump), .ENTER)
+	eng.input_bind(&e.input, act(.Back), .SPACE)
+	eng.input_bind(&e.input, act(.Move_Left), .A)
 	s.world_target = eng.renderer_make_target(&e.renderer)
 	s.ui_target = eng.renderer_make_target(&e.renderer)
 	s.sprite = rl.LoadTexture("./test.png")
@@ -104,7 +106,7 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 
 	s.camera = rl.Camera2D {
 		offset = {f32(e.renderer.width) / 2, f32(e.renderer.height) / 2},
-		target = {0, 0},
+		target = s.player_position,
 		zoom   = 1.0,
 	}
 }
@@ -116,6 +118,14 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 
 	s.mouse_delta = e.input.mouse.delta
 	moving := e.input.mouse.left.held
+	if eng.input_pressed(&e.input, act(.Move_Left)) {
+		s.player_facing = .HORIZONTAL
+		s.player_position.x -= 10
+		moving = true
+	}
+	if eng.input_pressed(&e.input, act(.Back)) {
+		s.anim_state.paused = !s.anim_state.paused
+	}
 	flip_triggered := eng.input_pressed(&e.input, act(.Jump))
 	currently_flipping := s.anim_state.anim == &s.flip_anim && !s.anim_state.finished
 	target_anim: ^eng.Animation
