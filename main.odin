@@ -50,7 +50,7 @@ Title_State :: struct {
 	mouse_delta:     rl.Vector2,
 	world_target:    eng.Render_Target,
 	ui_target:       eng.Render_Target,
-	camera:          rl.Camera2D,
+	camera:          eng.Camera_State,
 }
 
 title_screen :: proc() -> eng.Scene_Procs {
@@ -67,6 +67,16 @@ title_screen :: proc() -> eng.Scene_Procs {
 title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Title_State)data
 	//eng.toggle_fullscreen(&e.window)
+
+	eng.camera_init(
+		&s.camera,
+		offset = {f32(e.renderer.logical_width) / 2, f32(e.renderer.logical_height) / 2},
+		follow_speed = 6.0,
+		trauma_decay = 1.5,
+		shake_max = 12.0,
+	)
+
+	s.camera.camera.target = s.player_position
 
 	//keyboard bindings
 	eng.input_bind_keyboard(&e.input, act(.Jump), .ENTER)
@@ -123,12 +133,6 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 
 	s.anim_state = eng.create_animation_state(&s.idle_anim)
-
-	s.camera = rl.Camera2D {
-		offset = {f32(e.renderer.logical_width) / 2, f32(e.renderer.logical_height) / 2},
-		target = s.player_position,
-		zoom   = 1.0,
-	}
 }
 
 title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
@@ -136,6 +140,14 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	s.timer += dt
 	s.mouse_pos = e.input.mouse.position
 	s.mouse_delta = e.input.mouse.delta
+
+	eng.camera_follow(&s.camera, s.player_position, dt)
+
+	if eng.input_pressed(&e.input, act(.Jump)) {
+		eng.add_trauma(&s.camera, 0.5)
+	}
+
+	eng.update_camera(&s.camera, dt)
 
 	PLAYER_SPEED :: f32(200)
 	move_x: f32
@@ -195,6 +207,12 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.begin_render_target(s.world_target)
 	eng.renderer_clear(rl.BLACK)
 	eng.begin_camera(s.camera)
+	world_mouse := eng.screen_to_world(
+		e.renderer.viewport,
+		e.renderer.logical_width,
+		s.camera,
+		e.input.mouse.position,
+	)
 	//eng.draw_basic_shape(cstring("hello world"), i32(50), i32(50), i32(100), rl.BLUE)
 	//eng.draw_basic_shape(rl.Vector2(10), f32(100.00), rl.WHITE)
 	//
