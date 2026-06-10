@@ -73,6 +73,11 @@ renderer_draw_sprite :: proc(
 		height = sprite.src.height * scale,
 	}
 
-	rl.DrawTexturePro(sprite.texture, src, dest, {0, 0}, 0, tint)
+	//center of sprite
+	origin := rl.Vector2{dest.width / 2, dest.height / 2}
+	//at the "feet"
+	//origin := rl.Vector2{dest.width/2, dest.height}
+
+	rl.DrawTexturePro(sprite.texture, src, dest, origin, 0, tint)
 }
 
