@@ -48,6 +48,13 @@ shader_set_float :: rend.shader_set_float
 shader_set_vec2 :: rend.shader_set_vec2
 shader_set_texture :: rend.shader_set_texture
 blit_shader :: rend.renderer_blit_shader
+//tilemap
+Tilemap :: rend.Tilemap
+create_tilemap :: rend.tilemap_create
+tilemap_set_tile :: rend.tilemap_set_tile
+draw_tilemap :: rend.tilemap_draw
+tilemap_is_solid :: rend.tilemap_is_solid
+destroy_tilemap :: rend.tilemap_destroy
 
 
 //animation

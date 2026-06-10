@@ -52,6 +52,8 @@ Title_State :: struct {
 	ui_target:       eng.Render_Target,
 	camera:          eng.Camera_State,
 	post_shader:     eng.Shader_ID,
+	tileset:         rl.Texture2D,
+	tilemap:         eng.Tilemap,
 }
 
 title_screen :: proc() -> eng.Scene_Procs {
@@ -77,7 +79,18 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 		shake_max = 12.0,
 	)
 
+	s.player_position = {320, 200}
 	s.camera.camera.target = s.player_position
+
+	s.tileset = rl.LoadTexture("resources/tilesets/Final/tiles.png")
+
+	s.tilemap = eng.create_tilemap(20, 15, 32, 32, 2, s.tileset, 11)
+
+	s.tilemap.solid[1] = true
+	for col in 0 ..< s.tilemap.cols {
+		eng.tilemap_set_tile(&s.tilemap, 0, col, s.tilemap.rows - 1, 5)
+	}
+
 
 	//keyboard bindings
 	eng.input_bind_keyboard(&e.input, act(.Jump), .ENTER)
@@ -216,6 +229,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.begin_render_target(s.world_target)
 	eng.renderer_clear(rl.BLACK)
 	eng.begin_camera(s.camera)
+	eng.draw_tilemap(&s.tilemap, s.camera.camera)
 	world_mouse := eng.screen_to_world(
 		e.renderer.viewport,
 		e.renderer.logical_width,
@@ -329,6 +343,8 @@ title_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Title_State)data
 
 	eng.shader_unload(&e.renderer.shaders, s.post_shader)
+	eng.destroy_tilemap(&s.tilemap)
+	rl.UnloadTexture(s.tileset)
 	eng.destroy_render_target(s.world_target)
 	eng.destroy_render_target(s.ui_target)
 	free(data)
