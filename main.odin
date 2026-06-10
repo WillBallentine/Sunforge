@@ -51,6 +51,7 @@ Title_State :: struct {
 	world_target:    eng.Render_Target,
 	ui_target:       eng.Render_Target,
 	camera:          eng.Camera_State,
+	post_shader:     eng.Shader_ID,
 }
 
 title_screen :: proc() -> eng.Scene_Procs {
@@ -133,6 +134,7 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 
 	s.anim_state = eng.create_animation_state(&s.idle_anim)
+	s.post_shader = eng.shader_load(&e.renderer.shaders, "resources/shaders/grayscale.glsl")
 }
 
 title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
@@ -142,6 +144,13 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	s.mouse_delta = e.input.mouse.delta
 
 	eng.camera_follow(&s.camera, s.player_position, dt)
+	eng.shader_set_float(&e.renderer.shaders, s.post_shader, "time", s.timer)
+	eng.shader_set_vec2(
+		&e.renderer.shaders,
+		s.post_shader,
+		"resolution",
+		{f32(e.renderer.logical_width), f32(e.renderer.logical_height)},
+	)
 
 	if eng.input_pressed(&e.input, act(.Jump)) {
 		eng.add_trauma(&s.camera, 0.5)
@@ -312,13 +321,14 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.end_render_target()
 
-	eng.blit(&e.renderer, s.world_target)
+	eng.blit_shader(&e.renderer, s.world_target, s.post_shader)
 	eng.blit(&e.renderer, s.ui_target)
 }
 
 title_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Title_State)data
 
+	eng.shader_unload(&e.renderer.shaders, s.post_shader)
 	eng.destroy_render_target(s.world_target)
 	eng.destroy_render_target(s.ui_target)
 	free(data)

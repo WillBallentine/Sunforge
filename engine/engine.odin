@@ -4,17 +4,23 @@ import core "./core"
 import rend "./renderer"
 import rl "vendor:raylib"
 
+//Window
 Window_Config :: core.Window_Config
 Action_ID :: core.Action_ID
 set_window_size :: core.window_set_size
 toggle_fullscreen :: core.window_toggle_fullscreen
+
+//controls
 input_bind_keyboard :: core.input_bind_keyboard
 input_bind_controller :: core.input_bind_controller
 input_pressed :: core.input_pressed
 input_held :: core.input_held
 input_released :: core.input_released
+
+//render
 Render_Target :: rend.Render_Target
 Camera_State :: rend.Camera_State
+//camera
 camera_init :: rend.camera_init
 camera_follow :: rend.camera_follow
 add_trauma :: rend.add_trauma
@@ -28,12 +34,23 @@ begin_render_target :: rend.renderer_begin_target
 end_render_target :: rend.renderer_end_target
 renderer_clear :: rend.renderer_clear
 blit :: rend.renderer_blit
-blit_shader :: rend.renderer_blit_shader
 begin_camera :: rend.renderer_begin_camera
 end_camera :: rend.renderer_end_camera
 draw_texture :: rend.draw_texture
 draw_basic_shape :: rend.draw_basic_shape
 get_sprite :: rend.get_sprite
+//shaders
+Shader_ID :: rend.Shader_ID
+shader_load :: rend.shader_load
+shader_unload :: rend.shader_unload
+shader_get :: rend.shader_get
+shader_set_float :: rend.shader_set_float
+shader_set_vec2 :: rend.shader_set_vec2
+shader_set_texture :: rend.shader_set_texture
+blit_shader :: rend.renderer_blit_shader
+
+
+//animation
 Flip :: rend.Flip
 Animation :: rend.Animation
 Animation_State :: rend.Animation_State
@@ -65,7 +82,6 @@ Engine :: struct {
 	//audio:    Audio_State,
 	//entities: Entity_Pool,
 	//scenes:   Scene_System,
-	//shaders:  Shader_State,
 	//timers:   Timer_System,
 	//ui:       UI_Context,
 	_scene:   Scene_Procs,

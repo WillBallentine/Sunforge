@@ -10,6 +10,7 @@ Renderer_State :: struct {
 	screen_width:   i32,
 	screen_height:  i32,
 	viewport:       rl.Rectangle,
+	shaders:        Shader_State,
 }
 
 Render_Target :: rl.RenderTexture2D
@@ -19,9 +20,11 @@ renderer_init :: proc(state: ^Renderer_State, width, height: i32) {
 	state.logical_width = width
 	state.screen_height = height
 	state.screen_width = width
+	shader_init(&state.shaders)
 }
 
 renderer_shutdown :: proc(state: ^Renderer_State) {
+	shader_shutdown(&state.shaders)
 }
 
 renderer_make_target :: proc(state: ^Renderer_State) -> Render_Target {
@@ -62,12 +65,6 @@ renderer_blit :: proc(state: ^Renderer_State, target: Render_Target) {
 	dest := rl.Rectangle{dest_x, dest_y, dest_w, dest_h}
 	state.viewport = dest
 	rl.DrawTexturePro(target.texture, src, dest, {0, 0}, 0, rl.WHITE)
-}
-
-renderer_blit_shader :: proc(state: ^Renderer_State, target: Render_Target, shader: rl.Shader) {
-	rl.BeginShaderMode(shader)
-	renderer_blit(state, target)
-	rl.EndShaderMode()
 }
 
 renderer_screen_to_world :: proc(
