@@ -2,8 +2,6 @@ package main
 
 import eng "./engine"
 import "core:fmt"
-import "core:sys/llvm"
-import "vendor:glfw/bindings"
 import rl "vendor:raylib"
 
 Game_Action :: enum u32 {
@@ -15,6 +13,27 @@ Game_Action :: enum u32 {
 	Confirm,
 	Back,
 	UP_Arrow,
+}
+
+empty_tile :: -1
+grass_top :: 6
+dirt :: 16
+stone :: 13
+column_bottom :: 30
+column_top :: 19
+column_connector :: 92
+column_extend :: 91
+
+
+level_layout := []string {
+	"........................................",
+	"........................................",
+	"....SSSS................................",
+	"........................................",
+	"..............ER........................",
+	"...............T........................",
+	"GGGGGGGGGGGGGGGCGGGGGGGGGGGGGGGGGGGGGGGG",
+	"DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD",
 }
 
 act :: #force_inline proc(a: Game_Action) -> eng.Action_ID {
@@ -79,18 +98,14 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 		shake_max = 12.0,
 	)
 
-	s.player_position = {320, 200}
+	s.player_position = {635, 135}
 	s.camera.camera.target = s.player_position
 
 	s.tileset = rl.LoadTexture("resources/tilesets/Final/tiles.png")
 
-	s.tilemap = eng.create_tilemap(20, 15, 32, 32, 2, s.tileset, 11)
-
-	s.tilemap.solid[1] = true
-	for col in 0 ..< s.tilemap.cols {
-		eng.tilemap_set_tile(&s.tilemap, 0, col, s.tilemap.rows - 1, 5)
-	}
-
+	s.tilemap = eng.create_tilemap(40, 15, 32, 32, 2, s.tileset, 11)
+	build_level(&s.tilemap)
+	mark_solid_tiles(&s.tilemap)
 
 	//keyboard bindings
 	eng.input_bind_keyboard(&e.input, act(.Jump), .ENTER)
@@ -147,7 +162,7 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 
 	s.anim_state = eng.create_animation_state(&s.idle_anim)
-	s.post_shader = eng.shader_load(&e.renderer.shaders, "resources/shaders/grayscale.glsl")
+	//s.post_shader = eng.shader_load(&e.renderer.shaders, "resources/shaders/grayscale.glsl")
 }
 
 title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
@@ -157,13 +172,13 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	s.mouse_delta = e.input.mouse.delta
 
 	eng.camera_follow(&s.camera, s.player_position, dt)
-	eng.shader_set_float(&e.renderer.shaders, s.post_shader, "time", s.timer)
-	eng.shader_set_vec2(
-		&e.renderer.shaders,
-		s.post_shader,
-		"resolution",
-		{f32(e.renderer.logical_width), f32(e.renderer.logical_height)},
-	)
+	//eng.shader_set_float(&e.renderer.shaders, s.post_shader, "time", s.timer)
+	//eng.shader_set_vec2(
+	// 	&e.renderer.shaders,
+	// 	s.post_shader,
+	// 	"resolution",
+	// 	{f32(e.renderer.logical_width), f32(e.renderer.logical_height)},
+	// )
 
 	if eng.input_pressed(&e.input, act(.Jump)) {
 		eng.add_trauma(&s.camera, 0.5)
@@ -335,18 +350,58 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.end_render_target()
 
-	eng.blit_shader(&e.renderer, s.world_target, s.post_shader)
+	//eng.blit_shader(&e.renderer, s.world_target, s.post_shader)
+	eng.blit(&e.renderer, s.world_target)
 	eng.blit(&e.renderer, s.ui_target)
 }
 
 title_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Title_State)data
 
-	eng.shader_unload(&e.renderer.shaders, s.post_shader)
+	//eng.shader_unload(&e.renderer.shaders, s.post_shader)
 	eng.destroy_tilemap(&s.tilemap)
 	rl.UnloadTexture(s.tileset)
 	eng.destroy_render_target(s.world_target)
 	eng.destroy_render_target(s.ui_target)
 	free(data)
+}
+
+
+build_level :: proc(tm: ^eng.Tilemap) {
+	for row_str, row in level_layout {
+		for ch, col in row_str {
+			tile_index: i32
+			switch ch {
+			case '.':
+				tile_index = empty_tile
+			case 'G':
+				tile_index = grass_top
+			case 'D':
+				tile_index = dirt
+			case 'S':
+				tile_index = stone
+			case 'C':
+				tile_index = column_bottom
+			case 'E':
+				tile_index = column_extend
+			case 'R':
+				tile_index = column_connector
+			case 'T':
+				tile_index = column_top
+			case:
+				tile_index = empty_tile
+			}
+
+			if tile_index != empty_tile {
+				eng.tilemap_set_tile(tm, 0, i32(col), i32(row), tile_index)
+			}
+		}
+	}
+}
+
+mark_solid_tiles :: proc(tm: ^eng.Tilemap) {
+	tm.solid[grass_top] = true
+	tm.solid[dirt] = true
+	tm.solid[stone] = true
 }
 
