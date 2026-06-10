@@ -11,6 +11,7 @@ Renderer_State :: struct {
 	screen_height:  i32,
 	viewport:       rl.Rectangle,
 	shaders:        Shader_State,
+	particles:      Particle_System,
 }
 
 Render_Target :: rl.RenderTexture2D

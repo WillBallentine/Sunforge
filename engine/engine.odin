@@ -55,7 +55,12 @@ tilemap_set_tile :: rend.tilemap_set_tile
 draw_tilemap :: rend.tilemap_draw
 tilemap_is_solid :: rend.tilemap_is_solid
 destroy_tilemap :: rend.tilemap_destroy
-
+//particle
+Particle_System :: rend.Particle_System
+Particle_Config :: rend.Particle_Config
+emit_particles :: rend.emit_particles
+update_particles :: rend.update_particle_system
+draw_particles :: rend.draw_particles
 
 //animation
 Flip :: rend.Flip

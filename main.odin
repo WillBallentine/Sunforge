@@ -26,14 +26,15 @@ column_extend :: 91
 
 
 level_layout := []string {
-	"........................................",
-	"........................................",
-	"....SSSS................................",
-	"........................................",
-	"..............ER........................",
-	"...............T........................",
-	"GGGGGGGGGGGGGGGCGGGGGGGGGGGGGGGGGGGGGGGG",
-	"DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD",
+	"SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+	"S......................................S",
+	"S...SSSS...............................S",
+	"S......................................S",
+	"S.............ER.......................S",
+	"S..............T.......................S",
+	"SGGGGGGGGGGGGGGCGGGGGGGGGGGGGGGGGGGGGGGS",
+	"SDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDS",
+	"SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
 }
 
 act :: #force_inline proc(a: Game_Action) -> eng.Action_ID {
@@ -98,7 +99,7 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 		shake_max = 12.0,
 	)
 
-	s.player_position = {635, 135}
+	s.player_position = {635, 201}
 	s.camera.camera.target = s.player_position
 
 	s.tileset = rl.LoadTexture("resources/tilesets/Final/tiles.png")
@@ -170,6 +171,7 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	s.timer += dt
 	s.mouse_pos = e.input.mouse.position
 	s.mouse_delta = e.input.mouse.delta
+	eng.update_particles(&e.renderer.particles, dt)
 
 	eng.camera_follow(&s.camera, s.player_position, dt)
 	//eng.shader_set_float(&e.renderer.shaders, s.post_shader, "time", s.timer)
@@ -182,6 +184,24 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 
 	if eng.input_pressed(&e.input, act(.Jump)) {
 		eng.add_trauma(&s.camera, 0.5)
+	}
+
+	eng.draw_basic_shape(fmt.ctprintf("dt: %v", dt), 0, 0, 48, rl.GREEN)
+	if int(dt) % 2 > 0 {
+		p_config := eng.Particle_Config {
+			position     = s.player_position,
+			velocity_min = {-220, -220},
+			velocity_max = {220, 220},
+			color_start  = rl.YELLOW,
+			color_end    = {255, 80, 0, 0},
+			size_start   = 2,
+			size_end     = 1,
+			lifetime     = 0.4,
+			gravity      = 300,
+			count        = 30,
+		}
+		eng.emit_particles(&e.renderer.particles, p_config)
+
 	}
 
 	eng.update_camera(&s.camera, dt)
@@ -223,6 +243,19 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 		target_anim = &s.flip_anim
 	} else if flip_triggered {
 		target_anim = &s.flip_anim
+		p_config := eng.Particle_Config {
+			position     = s.player_position,
+			velocity_min = {-20, -60},
+			velocity_max = {20, -20},
+			color_start  = {200, 200, 200, 100},
+			color_end    = {200, 200, 200, 0},
+			size_start   = 2,
+			size_end     = 8,
+			lifetime     = 1.5,
+			gravity      = -10,
+			count        = 80,
+		}
+		eng.emit_particles(&e.renderer.particles, p_config)
 	} else if moving {
 		target_anim = &s.walk_anim
 	} else {
@@ -245,6 +278,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.renderer_clear(rl.BLACK)
 	eng.begin_camera(s.camera)
 	eng.draw_tilemap(&s.tilemap, s.camera.camera)
+	eng.draw_particles(&e.renderer.particles)
 	world_mouse := eng.screen_to_world(
 		e.renderer.viewport,
 		e.renderer.logical_width,
@@ -265,7 +299,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 
 	eng.draw_basic_shape(cstring("Sunforge Testing"), 0, 0, 48, rl.GREEN)
 	sprite := eng.get_sprite_for_animation(&s.anim_state)
-	eng.draw_texture(sprite, s.player_position, 2.0, s.player_facing, rl.WHITE)
+	eng.draw_texture(sprite, s.player_position, 1.0, s.player_facing, rl.WHITE)
 
 
 	eng.end_camera()
