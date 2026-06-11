@@ -4,7 +4,8 @@ package renderer
 
 import rl "vendor:raylib"
 
-MAX_FRAME_EVENTS := 16
+MAX_FRAME_EVENTS :: 16
+FRAME_EVENT_TAG_NONE :: 0
 
 Animation :: struct {
 	texture:           rl.Texture2D,
@@ -29,8 +30,6 @@ Animation_State :: struct {
 	finished:      bool,
 }
 
-//export this to the engine package
-FRAME_EVENT_TAG_NONE := 0
 
 Frame_Event :: struct {
 	frame: i32,
@@ -51,7 +50,7 @@ animation_state_create :: proc(anim: ^Animation) -> Animation_State {
 
 check_frame_event :: proc(anim: ^Animation, frame: i32) -> u32 {
 	if anim == nil do return FRAME_EVENT_TAG_NONE
-	for i in 0 .. anim.event_count {
+	for i in 0..<int(anim.event_count) {
 		if anim.frame_events[i].frame == frame do return anim.frame_events[i].tag
 	}
 	return FRAME_EVENT_TAG_NONE

@@ -66,10 +66,13 @@ draw_particles :: rend.draw_particles
 Flip :: rend.Flip
 Animation :: rend.Animation
 Animation_State :: rend.Animation_State
+FRAME_EVENT_TAG_NONE :: rend.FRAME_EVENT_TAG_NONE
+Frame_Event :: rend.Frame_Event
 create_animation_state :: rend.animation_state_create
 reset_animation_state :: rend.animation_state_reset
 get_sprite_for_animation :: rend.animation_state_get_sprite
 update_animation_state :: rend.animation_state_update
+
 
 Engine_Config :: struct {
 	window: core.Window_Config,
