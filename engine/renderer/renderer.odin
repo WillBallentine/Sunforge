@@ -23,10 +23,12 @@ renderer_init :: proc(state: ^Renderer_State, width, height: i32) {
 	state.screen_height = height
 	state.screen_width = width
 	shader_init(&state.shaders)
+	font_init(&state.fonts)
 }
 
 renderer_shutdown :: proc(state: ^Renderer_State) {
 	shader_shutdown(&state.shaders)
+	font_shutdown(&state.fonts)
 }
 
 renderer_make_target :: proc(state: ^Renderer_State) -> Render_Target {

@@ -62,10 +62,8 @@ emit_particles :: rend.emit_particles
 update_particles :: rend.update_particle_system
 draw_particles :: rend.draw_particles
 //fonts
-Font_State :: rend.Font_State
 Font_ID :: rend.Font_ID
 load_font :: rend.load_font
-init_font :: rend.font_init
 unload_font :: rend.unload_font
 draw_font :: rend.draw_font
 measure_font :: rend.measure_font
