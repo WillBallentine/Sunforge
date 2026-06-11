@@ -12,6 +12,7 @@ Renderer_State :: struct {
 	viewport:       rl.Rectangle,
 	shaders:        Shader_State,
 	particles:      Particle_System,
+	fonts:          Font_State,
 }
 
 Render_Target :: rl.RenderTexture2D
@@ -111,7 +112,6 @@ draw_basic_shape :: proc {
 	renderer_draw_circle,
 	renderer_draw_line,
 	renderer_draw_rect,
-	renderer_draw_text,
 }
 
 renderer_draw_rect :: proc(rect: rl.Rectangle, thickness: f32, color: rl.Color) {
@@ -124,10 +124,6 @@ renderer_draw_circle :: proc(center: rl.Vector2, radius: f32, color: rl.Color) {
 
 renderer_draw_line :: proc(start, end: rl.Vector2, thickness: f32, color: rl.Color) {
 	rl.DrawLineEx(start, end, thickness, color)
-}
-
-renderer_draw_text :: proc(text: cstring, x, y, size: i32, color: rl.Color) {
-	rl.DrawText(text, x, y, size, color)
 }
 
 renderer_handle_resize :: proc(state: ^Renderer_State, w, h: i32) {
