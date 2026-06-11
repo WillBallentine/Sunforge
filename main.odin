@@ -15,8 +15,8 @@ Game_Action :: enum u32 {
 	UP_Arrow,
 }
 
-TAG_NONE := eng.FRAME_EVENT_TAG_NONE
-TAG_JUMP_LAND := 2
+TAG_NONE :: eng.FRAME_EVENT_TAG_NONE
+TAG_JUMP_LAND :: 2
 
 empty_tile :: -1
 grass_top :: 6
@@ -144,17 +144,15 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 
 	s.flip_anim = eng.Animation {
-		texture           = s.sprite,
+		texture = s.sprite,
 		first_frame_index = 24,
-		frame_w           = 48,
-		frame_h           = 48,
-		frame_count       = 3,
-		columns           = 7,
-		fps               = 8,
-		looping           = false,
-		frame_events = {
-			2 = eng.Frame_Event {frame = 2, tag = TAG_JUMP_LAND},
-		},
+		frame_w = 48,
+		frame_h = 48,
+		frame_count = 3,
+		columns = 7,
+		fps = 8,
+		looping = false,
+		frame_events = {0 = {frame = 1, tag = TAG_JUMP_LAND}},
 		event_count = 1,
 	}
 
