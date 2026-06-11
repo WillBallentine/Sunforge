@@ -44,6 +44,4 @@ Generic AI-generated code: submitting output from a chatbot or code-generation t
 
 Match the conventions already used in the codebase (naming, file organization, package structure under `engine/`). When in doubt, follow the patterns in the package you're touching.
 
-## License
-
 By contributing, you agree that your contributions will be licensed under the project's [MIT License](LICENSE).

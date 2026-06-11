@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="sunforge_logo.png" alt="Sunforge logo" width="160">
+</p>
+
 
 # Sunforge
 
