@@ -15,6 +15,9 @@ Game_Action :: enum u32 {
 	UP_Arrow,
 }
 
+TAG_NONE :: eng.FRAME_EVENT_TAG_NONE
+TAG_JUMP_LAND :: 2
+
 empty_tile :: -1
 grass_top :: 6
 dirt :: 16
@@ -141,14 +144,16 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 
 	s.flip_anim = eng.Animation {
-		texture           = s.sprite,
+		texture = s.sprite,
 		first_frame_index = 24,
-		frame_w           = 48,
-		frame_h           = 48,
-		frame_count       = 3,
-		columns           = 7,
-		fps               = 8,
-		looping           = false,
+		frame_w = 48,
+		frame_h = 48,
+		frame_count = 3,
+		columns = 7,
+		fps = 8,
+		looping = false,
+		frame_events = {0 = {frame = 1, tag = TAG_JUMP_LAND}},
+		event_count = 1,
 	}
 
 	s.walk_anim = eng.Animation {
@@ -243,6 +248,16 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 		target_anim = &s.flip_anim
 	} else if flip_triggered {
 		target_anim = &s.flip_anim
+	} else if moving {
+		target_anim = &s.walk_anim
+	} else {
+		target_anim = &s.idle_anim
+	}
+	if s.anim_state.anim != target_anim {
+		s.anim_state = eng.create_animation_state(target_anim)
+	}
+	eng.update_animation_state(&s.anim_state, dt)
+	if s.anim_state.fired_event == TAG_JUMP_LAND {
 		p_config := eng.Particle_Config {
 			position     = s.player_position,
 			velocity_min = {-20, -60},
@@ -256,15 +271,7 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 			count        = 80,
 		}
 		eng.emit_particles(&e.renderer.particles, p_config)
-	} else if moving {
-		target_anim = &s.walk_anim
-	} else {
-		target_anim = &s.idle_anim
 	}
-	if s.anim_state.anim != target_anim {
-		s.anim_state = eng.create_animation_state(target_anim)
-	}
-	eng.update_animation_state(&s.anim_state, dt)
 
 	if eng.input_pressed(&e.input, act(.Confirm)) {
 		s.confirm_pressed = true
