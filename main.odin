@@ -75,6 +75,8 @@ Title_State :: struct {
 	ui_target:       eng.Render_Target,
 	camera:          eng.Camera_State,
 	post_shader:     eng.Shader_ID,
+	alger_font:      eng.Font_ID,
+	fira_font:       eng.Font_ID,
 	tileset:         rl.Texture2D,
 	tilemap:         eng.Tilemap,
 }
@@ -169,6 +171,8 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 
 	s.anim_state = eng.create_animation_state(&s.idle_anim)
 	//s.post_shader = eng.shader_load(&e.renderer.shaders, "resources/shaders/grayscale.glsl")
+	s.alger_font = eng.load_font(&e.renderer.fonts, "resources/fonts/ALGER.TTF", 50)
+	s.fira_font = eng.load_font(&e.renderer.fonts, "resources/fonts/FiraCodeNerdFont-Bold.ttf", 50)
 }
 
 title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
@@ -191,7 +195,7 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 		eng.add_trauma(&s.camera, 0.5)
 	}
 
-	eng.draw_basic_shape(fmt.ctprintf("dt: %v", dt), 0, 0, 48, rl.GREEN)
+	//eng.draw_basic_shape(fmt.ctprintf("dt: %v", dt), 0, 0, 48, rl.GREEN)
 	if int(dt) % 2 > 0 {
 		p_config := eng.Particle_Config {
 			position     = s.player_position,
@@ -234,7 +238,7 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	if eng.input_pressed(&e.input, act(.UP_Arrow)) {
 		new_height := e.window.height + 50
 		new_width := e.window.width + 50
-		eng.draw_basic_shape(fmt.ctprintf("new height: %s", new_height), 100, 100, 100, rl.WHITE)
+		//eng.draw_basic_shape(fmt.ctprintf("new height: %s", new_height), 100, 100, 100, rl.WHITE)
 		eng.set_window_size(&e.window, new_width, new_height)
 	}
 	if eng.input_pressed(&e.input, act(.Back)) {
@@ -292,19 +296,8 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 		s.camera,
 		e.input.mouse.position,
 	)
-	//eng.draw_basic_shape(cstring("hello world"), i32(50), i32(50), i32(100), rl.BLUE)
-	//eng.draw_basic_shape(rl.Vector2(10), f32(100.00), rl.WHITE)
-	//
-	// show all sprites on screen
-	// start := 7
-	// end := 12
-	// for i in 7 ..< 13 {
-	// 	sprite := eng.get_sprite(s.sprite, 48, 48, i32(i), 7)
-	// 	eng.draw_texture(sprite, rl.Vector2{0, 0}, 1.0, s.player_facing, rl.WHITE)
-	// 	eng.renderer_clear(rl.BLACK)
-	// }
 
-	eng.draw_basic_shape(cstring("Sunforge Testing"), 0, 0, 48, rl.GREEN)
+	eng.draw_font(&e.renderer.fonts, s.alger_font, "Sunforge Testing", {100, -50}, 48, 5, rl.GREEN)
 	sprite := eng.get_sprite_for_animation(&s.anim_state)
 	eng.draw_texture(sprite, s.player_position, 1.0, s.player_facing, rl.WHITE)
 
@@ -314,81 +307,174 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 
 	eng.begin_render_target(s.ui_target)
 	eng.renderer_clear({0, 0, 0, 0})
-	//eng.draw_basic_shape(cstring("hello ui"), i32(690), i32(400), i32(100), rl.GREEN)
-	//eng.renderer_draw_rect(rl.Rectangle{f32(150), f32(15), f32(25), f32(25)}, f32(25), rl.GREEN)
 	//debug inputs
 	//keyboard
-	eng.draw_basic_shape(
-		fmt.ctprintf("pressed: %v", e.input.actions[3].pressed),
-		10,
-		30,
+	//
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("Move_Down pressed: %v", e.input.actions[3].pressed),
+		{10, 20},
 		16,
+		5,
 		rl.YELLOW,
 	)
-	eng.draw_basic_shape(fmt.ctprintf("held: %v", e.input.actions[3].held), 10, 50, 16, rl.YELLOW)
-	eng.draw_basic_shape(
-		fmt.ctprintf("released: %v", e.input.actions[3].released),
-		10,
-		70,
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("Move_Down held: %v", e.input.actions[3].held),
+		{10, 40},
 		16,
+		5,
 		rl.YELLOW,
 	)
-	eng.draw_basic_shape(fmt.ctprintf("player pos: %v", s.player_position), 10, 280, 16, rl.YELLOW)
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("Move_Up pressed: %v", e.input.actions[2].pressed),
+		{10, 60},
+		16,
+		5,
+		rl.YELLOW,
+	)
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("Move_Up held: %v", e.input.actions[2].held),
+		{10, 80},
+		16,
+		5,
+		rl.YELLOW,
+	)
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("Move_Left pressed: %v", e.input.actions[0].pressed),
+		{10, 100},
+		16,
+		5,
+		rl.YELLOW,
+	)
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("Move_Left held: %v", e.input.actions[0].held),
+		{10, 120},
+		16,
+		5,
+		rl.YELLOW,
+	)
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("Move_Right pressed: %v", e.input.actions[1].pressed),
+		{10, 140},
+		16,
+		5,
+		rl.YELLOW,
+	)
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("Move_Right held: %v", e.input.actions[1].held),
+		{10, 160},
+		16,
+		5,
+		rl.YELLOW,
+	)
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("player pos: %v", s.player_position),
+		{10, 180},
+		16,
+		5,
+		rl.YELLOW,
+	)
 
-	//mouse
-	eng.draw_basic_shape(
+	// //mouse
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
 		fmt.ctprintf("left mouse pressed: %v", e.input.mouse.left.pressed),
-		10,
-		200,
+		{10, 200},
 		16,
+		5,
 		rl.YELLOW,
 	)
-	eng.draw_basic_shape(
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
 		fmt.ctprintf("left mouse held: %v", e.input.mouse.left.held),
-		10,
-		220,
+		{10, 220},
 		16,
+		5,
 		rl.YELLOW,
 	)
-	eng.draw_basic_shape(
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
 		fmt.ctprintf("left mouse released: %v", e.input.mouse.left.released),
-		10,
-		240,
+		{10, 240},
 		16,
+		5,
 		rl.YELLOW,
 	)
-	//end debug inputs
-
-	eng.draw_basic_shape(fmt.ctprintf("mouse pos: %v", s.mouse_pos), 10, 100, 16, rl.YELLOW)
-	eng.draw_basic_shape(fmt.ctprintf("mouse delta: %v", s.mouse_delta), 10, 140, 16, rl.YELLOW)
-	eng.draw_basic_shape(
-		fmt.ctprintf("mouse pressed: %v", e.input.mouse.left.pressed),
-		10,
-		120,
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("right mouse pressed: %v", e.input.mouse.right.pressed),
+		{10, 260},
 		16,
+		5,
 		rl.YELLOW,
 	)
-	eng.draw_basic_shape(
-		fmt.ctprintf("mouse held: %v", e.input.mouse.left.held),
-		10,
-		160,
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("right mouse held: %v", e.input.mouse.right.held),
+		{10, 280},
 		16,
+		5,
 		rl.YELLOW,
 	)
-	eng.draw_basic_shape(
-		fmt.ctprintf("mouse released: %v", e.input.mouse.left.released),
-		10,
-		180,
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("right mouse released: %v", e.input.mouse.right.released),
+		{10, 300},
 		16,
+		5,
 		rl.YELLOW,
 	)
-	eng.draw_basic_shape(
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("mouse pos: %v", s.mouse_pos),
+		{10, 320},
+		16,
+		5,
+		rl.YELLOW,
+	)
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
+		fmt.ctprintf("mouse delta: %v", s.mouse_delta),
+		{10, 340},
+		16,
+		5,
+		rl.YELLOW,
+	)
+	eng.draw_font(
+		&e.renderer.fonts,
+		s.fira_font,
 		fmt.ctprintf("mouse wheel: %v", e.input.mouse.wheel),
-		10,
-		260,
+		{10, 360},
 		16,
+		5,
 		rl.YELLOW,
 	)
+	//end debug
 	eng.end_render_target()
 
 	//eng.blit_shader(&e.renderer, s.world_target, s.post_shader)
