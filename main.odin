@@ -75,7 +75,8 @@ Title_State :: struct {
 	ui_target:       eng.Render_Target,
 	camera:          eng.Camera_State,
 	post_shader:     eng.Shader_ID,
-	test_font:       eng.Font_ID,
+	alger_font:      eng.Font_ID,
+	fira_font:       eng.Font_ID,
 	tileset:         rl.Texture2D,
 	tilemap:         eng.Tilemap,
 }
@@ -170,7 +171,8 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 
 	s.anim_state = eng.create_animation_state(&s.idle_anim)
 	//s.post_shader = eng.shader_load(&e.renderer.shaders, "resources/shaders/grayscale.glsl")
-	s.test_font = eng.load_font(&e.renderer.fonts, "resources/fonts/ALGER.TTF", 50)
+	s.alger_font = eng.load_font(&e.renderer.fonts, "resources/fonts/ALGER.TTF", 50)
+	s.fira_font = eng.load_font(&e.renderer.fonts, "resources/fonts/FiraCodeNerdFont-Bold.ttf", 50)
 }
 
 title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
@@ -295,7 +297,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 		e.input.mouse.position,
 	)
 
-	eng.draw_font(&e.renderer.fonts, s.test_font, "Sunforge Testing", {100, -50}, 48, 5, rl.GREEN)
+	eng.draw_font(&e.renderer.fonts, s.alger_font, "Sunforge Testing", {100, -50}, 48, 5, rl.GREEN)
 	sprite := eng.get_sprite_for_animation(&s.anim_state)
 	eng.draw_texture(sprite, s.player_position, 1.0, s.player_facing, rl.WHITE)
 
@@ -310,7 +312,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	//
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("Move_Down pressed: %v", e.input.actions[3].pressed),
 		{10, 20},
 		16,
@@ -319,7 +321,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("Move_Down held: %v", e.input.actions[3].held),
 		{10, 40},
 		16,
@@ -328,7 +330,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("Move_Up pressed: %v", e.input.actions[2].pressed),
 		{10, 60},
 		16,
@@ -337,7 +339,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("Move_Up held: %v", e.input.actions[2].held),
 		{10, 80},
 		16,
@@ -346,7 +348,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("Move_Left pressed: %v", e.input.actions[0].pressed),
 		{10, 100},
 		16,
@@ -355,7 +357,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("Move_Left held: %v", e.input.actions[0].held),
 		{10, 120},
 		16,
@@ -364,7 +366,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("Move_Right pressed: %v", e.input.actions[1].pressed),
 		{10, 140},
 		16,
@@ -373,7 +375,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("Move_Right held: %v", e.input.actions[1].held),
 		{10, 160},
 		16,
@@ -382,7 +384,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("player pos: %v", s.player_position),
 		{10, 180},
 		16,
@@ -393,7 +395,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	// //mouse
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("left mouse pressed: %v", e.input.mouse.left.pressed),
 		{10, 200},
 		16,
@@ -402,7 +404,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("left mouse held: %v", e.input.mouse.left.held),
 		{10, 220},
 		16,
@@ -411,7 +413,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("left mouse released: %v", e.input.mouse.left.released),
 		{10, 240},
 		16,
@@ -420,7 +422,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("right mouse pressed: %v", e.input.mouse.right.pressed),
 		{10, 260},
 		16,
@@ -429,7 +431,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("right mouse held: %v", e.input.mouse.right.held),
 		{10, 280},
 		16,
@@ -438,7 +440,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("right mouse released: %v", e.input.mouse.right.released),
 		{10, 300},
 		16,
@@ -447,7 +449,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("mouse pos: %v", s.mouse_pos),
 		{10, 320},
 		16,
@@ -456,7 +458,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("mouse delta: %v", s.mouse_delta),
 		{10, 340},
 		16,
@@ -465,7 +467,7 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 	eng.draw_font(
 		&e.renderer.fonts,
-		s.test_font,
+		s.fira_font,
 		fmt.ctprintf("mouse wheel: %v", e.input.mouse.wheel),
 		{10, 360},
 		16,
