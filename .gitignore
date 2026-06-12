@@ -1,0 +1,10 @@
+# ---- build artifacts ----
+*.exe
+*.pdb
+*.ilk
+
+# ---- output dirs ----
+bin/
+
+# ---- editor-local state  ----
+recent_projects.json
