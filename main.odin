@@ -173,17 +173,17 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 
 	s.test_draw_cmd = eng.Draw_Command {
 		scale       = 1.5,
-		rotation    = 0,
+		rotation    = 180,
 		pivot_point = .CENTER,
 		tint        = rl.WHITE,
 	}
 
-	s.test_draw_cmd_2 = eng.Draw_Command {
-		scale       = 5,
-		rotation    = 0,
-		pivot_point = .CENTER,
-		tint        = rl.WHITE,
-	}
+	// s.test_draw_cmd_2 = eng.Draw_Command {
+	// 	scale       = 5,
+	// 	rotation    = 0,
+	// 	pivot_point = .CENTER,
+	// 	tint        = rl.WHITE,
+	// }
 
 	s.anim_state = eng.create_animation_state(&s.idle_anim)
 	//s.post_shader = eng.shader_load(&e.renderer.shaders, "resources/shaders/grayscale.glsl")
@@ -317,12 +317,12 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	s.test_draw_cmd.position = s.player_position
 	s.test_draw_cmd.flip = s.player_facing
 	s.test_draw_cmd.z = 1
-	s.test_draw_cmd_2.sprite = eng.get_sprite_for_animation(&s.anim_state)
-	s.test_draw_cmd_2.position = s.player_position
-	s.test_draw_cmd_2.flip = s.player_facing
-	s.test_draw_cmd_2.z = 2
+	// s.test_draw_cmd_2.sprite = eng.get_sprite_for_animation(&s.anim_state)
+	// s.test_draw_cmd_2.position = s.player_position
+	// s.test_draw_cmd_2.flip = s.player_facing
+	// s.test_draw_cmd_2.z = 2
 	eng.draw_buffer_push(&e.renderer.draw_buffer, s.test_draw_cmd)
-	eng.draw_buffer_push(&e.renderer.draw_buffer, s.test_draw_cmd_2)
+	//eng.draw_buffer_push(&e.renderer.draw_buffer, s.test_draw_cmd_2)
 	eng.draw_buffer_flush(&e.renderer.draw_buffer)
 
 
