@@ -14,6 +14,12 @@ Sunforge is **pre-v1** and under active development. APIs are unstable and may c
 
 ## Current Features
 
+### Project System (`project/`)
+- **Project System**: a portable project layout (project.json + resources/ + scenes/) independent of the Sunforge source tree. Project_Data (name, entry scene, window config, icon path) is created/loaded/saved via project_create/project_open/project_save; project_apply_icon applies a project's window icon via rl.LoadImage/rl.SetWindowIcon.
+
+### Editor (`editor/`)
+- **Editor**: a separate executable (editor/) for creating and opening Sunforge projects. Currently a console-based picker (type a folder path to create or open a project) with a recently-opened-projects list persisted to recent_projects.json next to the executable. Full editor UI/shell is pending
+
 ### Core (`engine/core`)
 - **Window**: configurable size/title/target FPS, fullscreen toggle, and runtime resize handling for resizeable windows
 - **Clock**: delta-time tracking with a frame-time cap to avoid large time steps after a stall
@@ -45,6 +51,7 @@ These packages exist as stubs and are planned for upcoming tiers (see [Roadmap](
 - `engine/audio`: sound and music playback
 - `engine/assets`: asset caching and hot-reload
 - `engine/ui`: immediate-mode UI system
+- Editor UI/shell, asset browser, scene/tilemap editors
 - Entity/scene management, timers, events, save system, scripting, and more
 
 ## Getting Started
@@ -56,19 +63,32 @@ build.bat
 game_debug.exe
 ```
 
+Run this from the repo root:
+```sh
+editor\build_editor.bat
+bin\editor_debug.exe
+```
+
+
 ## Project Structure
 
 ```
 engine/
-  core/       window, clock, input, math (foundation)
-  renderer/   rendering, camera, sprites, animation, tilemap, particles, shaders, fonts
-  physics/    (stub, planned)
-  audio/      (stub, planned)
-  assets/     (stub, planned)
-  ui/         (stub, planned)
-  engine.odin unified public API re-exporting the packages above
-main.odin     example game/scene
-resources/    textures, tilesets, shaders, fonts
+  project/                  Project_Data manifest, project_create/open/save, icon application
+  editor/
+    main.odin               editor entry point (project picker)
+    recent_projects.odin    recently opened project
+    build_editor.bat
+    
+  core/                     window, clock, input, math (foundation)
+  renderer/                 rendering, camera, sprites, animation, tilemap, particles, shaders, fonts
+  physics/                  (stub, planned)
+  audio/                    (stub, planned)
+  assets/                   (stub, planned)
+  ui/                       (stub, planned)
+  engine.odin               unified public API re-exporting the packages above
+main.odin                   example game/scene (soon to become a Sunforge project once the editor is more complete)
+resources/                  textures, tilesets, shaders, fonts
 ```
 
 ## Roadmap

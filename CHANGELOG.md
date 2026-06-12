@@ -29,6 +29,18 @@ This document summarizes Sunforge's development to date, grouped by engine syste
 - **Draw order / z-sorting**: added `Draw_Buffer` (up to 2048 `Draw_Command`s — sprite, position, scale, rotation, pivot, flip, tint, z) to `Renderer_State`. `draw_buffer_flush` sorts by `z` ascending via insertion sort and draws each command via `renderer_draw_sprite`, then clears the buffer. Re-exported from `engine.odin`; game code now pushes draw commands (`draw_buffer_push`) once per frame instead of calling sprite-draw directly
 - **Sprite rotation and pivot**: `renderer_draw_sprite` gained a `rotation` (degrees) parameter and a `Pivot_Point` enum (`CENTER`, `BOTTOM`) for the rotation/scale origin — `CENTER` for a sprite's center, `BOTTOM` for its "feet". `Draw_Command` carries both
 
+## Project system
+**NEW**
+- **project package** (`project/project.odin`): Project_Data struct (name, entry_scene, window: core.Window_Config, icon_path) plus project_create/project_open/project_save, defining a portable on-disk layout (project.json, resources/, scenes/) independent of the Sunforge source tree
+- **project_apply_icon**: loads icon_path (relative to the project root) via rl.LoadImage and applies it with rl.SetWindowIcon
+- **project_test.odin**: core:testing roundtrip test (create → open → re-create rejection
+
+## Editor
+**NEW**
+- **editor package** (`package main`): entry point prompts for a project folder, opens it via project_open if project.json exists or creates it via project_create otherwise. Console-based for now, pending future work
+- **recent_projects.odin**: tracks recently opened/created project paths in recent_projects.json, stored next to the editor executable
+- **build_editor.bat**: builds the editor to bin/editor_debug.exe
+
 ## Example / Tooling
 
 - `main.odin` example scene combining the systems above: a tilemap-based level, a player character with idle/walk/jump-flip animations (landing triggers a particle burst via a frame event), jump particle bursts, camera follow with shake on jump, a font-rendered title, and a debug overlay of live input state rendered with a second font
@@ -36,4 +48,5 @@ This document summarizes Sunforge's development to date, grouped by engine syste
 
 ## Looking Ahead
 
+tier-0-editor work has begun with #108 (project system foundation); editor shell, UI toolkit, and asset browser are next.
 See [README.md](README.md#roadmap) and the [issue tracker](https://github.com/WillBallentine/Sunforge/issues) for planned work across tier-0 through tier-10 and post-v1.
