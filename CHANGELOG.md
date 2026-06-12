@@ -17,9 +17,10 @@ This document summarizes Sunforge's development to date, grouped by engine syste
 ## Renderer
 
 - **Render targets**: offscreen render targets for compositing multiple layers (e.g. world + UI), blitted together each frame
-- **Basic shapes**: rectangle (outline), circle, line, and text drawing primitives
+- **Basic shapes**: rectangle (outline), circle, and line drawing primitives
+- **Fonts**: TrueType font loading via `rl.LoadFontEx`, managed through an ID-based registry (`Font_ID`) with load/unload tied into the renderer's init/shutdown lifecycle; text drawing and measurement via `draw_font` / `measure_font` (replaces the previous `rl.DrawText`-based text primitive)
 - **Sprites**: sprite-sheet slicing (grid and row layouts) with horizontal/vertical flip support
-- **Animation**: frame-based animation playback with configurable FPS, looping, and pause/resume; fixed a possible nil dereference in animation state updates
+- **Animation**: frame-based animation playback with configurable FPS, looping, and pause/resume; per-frame event tags (`Frame_Event`) for triggering gameplay logic on specific animation frames; fixed a possible nil dereference in animation state updates
 - **Camera**: smooth follow, trauma-based screen shake, and world/screen coordinate conversion
 - **Shaders**: fragment shader loading, uniform setters (float, vec2, texture), and a post-processing blit path
 - **Tilemap**: multi-layer tile grids with viewport-culled rendering and a per-tile collision/solid layer
@@ -27,7 +28,7 @@ This document summarizes Sunforge's development to date, grouped by engine syste
 
 ## Example / Tooling
 
-- `main.odin` example scene combining the systems above: a tilemap-based level, a player character with idle/walk/jump-flip animations, jump particle bursts, camera follow with shake on jump, and a debug overlay of live input state
+- `main.odin` example scene combining the systems above: a tilemap-based level, a player character with idle/walk/jump-flip animations (landing triggers a particle burst via a frame event), jump particle bursts, camera follow with shake on jump, a font-rendered title, and a debug overlay of live input state rendered with a second font
 - `build.bat` for building a debug Windows executable via `odin build`
 
 ## Looking Ahead
