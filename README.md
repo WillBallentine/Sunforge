@@ -1,3 +1,4 @@
+
 <p align="center">
   <img src="sunforge_logo.png" alt="Sunforge logo" width="160">
 </p>
@@ -20,16 +21,17 @@ Sunforge is **pre-v1** and under active development. APIs are unstable and may c
 
 ### Renderer (`engine/renderer`)
 - **Render targets**: offscreen targets for compositing layers (e.g. world + UI), blitted together each frame
-- **Basic shapes**: rectangle (outline), circle, line, and text drawing primitives
+- **Basic shapes**: rectangle (outline), circle, and line drawing primitives
+- **Fonts**: TrueType font loading (`rl.LoadFontEx`) through an ID-based registry (`Font_ID`), with load/unload lifecycle tied into the renderer's init/shutdown, plus text drawing and measurement (`draw_font` / `measure_font`)
 - **Sprites**: sprite-sheet slicing (grid and row layouts) with horizontal/vertical flipping
-- **Animation**: frame-based playback with configurable FPS, looping, and pause/resume
+- **Animation**: frame-based playback with configurable FPS, looping, pause/resume, and per-frame event tags for triggering gameplay logic (e.g. a landing effect on a specific frame)
 - **Camera**: smooth follow, trauma-based screen shake, and world/screen coordinate conversion
 - **Shaders**: fragment shader loading, uniform setters (float, vec2, texture), and a post-processing blit path
 - **Tilemap**: multi-layer tile grids with viewport-culled rendering and a per-tile collision layer
 - **Particles**: fixed 1024-particle pool with configurable velocity range, color gradient, size gradient, lifetime, and gravity per burst
 
 ### Example
-[main.odin](main.odin) ties these systems together in one scene: a tilemap-based level, a player character with idle/walk/jump-flip animations, jump particle effects, camera follow with shake on jump, and a debug overlay showing live input state.
+[main.odin](main.odin) ties these systems together in one scene: a tilemap-based level, a player character with idle/walk/jump-flip animations (landing triggers a particle burst via a frame event), jump particle effects, camera follow with shake on jump, a font-rendered title, and a debug overlay of live input state rendered with a second font.
 
 ## Not Yet Implemented
 
@@ -55,14 +57,14 @@ game_debug.exe
 ```
 engine/
   core/       window, clock, input, math (foundation)
-  renderer/   rendering, camera, sprites, animation, tilemap, particles, shaders
+  renderer/   rendering, camera, sprites, animation, tilemap, particles, shaders, fonts
   physics/    (stub, planned)
   audio/      (stub, planned)
   assets/     (stub, planned)
   ui/         (stub, planned)
   engine.odin unified public API re-exporting the packages above
 main.odin     example game/scene
-resources/    textures, tilesets, shaders
+resources/    textures, tilesets, shaders, fonts
 ```
 
 ## Roadmap
@@ -91,3 +93,4 @@ Interested in contributing? See [CONTRIBUTING.md](CONTRIBUTING.md) for how to ge
 ## License
 
 Sunforge is licensed under the [MIT License](LICENSE).
+
