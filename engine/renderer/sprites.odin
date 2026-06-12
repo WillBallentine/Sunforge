@@ -13,6 +13,11 @@ Flip :: enum {
 	VERTICAL,
 }
 
+Pivot_Point :: enum {
+	CENTER,
+	BOTTOM,
+}
+
 get_sprite :: proc {
 	sprite_from_grid_sheet,
 	sprite_from_row_sheet,
@@ -54,6 +59,8 @@ renderer_draw_sprite :: proc(
 	sprite: Sprite,
 	pos: rl.Vector2,
 	scale: f32,
+	rotation: f32,
+	pivot_point: Pivot_Point,
 	flip: Flip,
 	tint: rl.Color,
 ) {
@@ -73,11 +80,18 @@ renderer_draw_sprite :: proc(
 		height = sprite.src.height * scale,
 	}
 
-	//center of sprite
-	origin := rl.Vector2{dest.width / 2, dest.height / 2}
-	//at the "feet"
-	//origin := rl.Vector2{dest.width/2, dest.height}
+	origin: rl.Vector2 = rl.Vector2{}
+	switch pivot_point {
+	case .CENTER:
+		//center of sprite
+		origin = rl.Vector2{dest.width / 2, dest.height / 2}
+	case .BOTTOM:
+		//at the "feet"
+		origin = rl.Vector2{dest.width / 2, dest.height}
+	case:
+		origin = rl.Vector2{dest.width / 2, dest.height / 2}
+	}
 
-	rl.DrawTexturePro(sprite.texture, src, dest, origin, 0, tint)
+	rl.DrawTexturePro(sprite.texture, src, dest, origin, rotation, tint)
 }
 

@@ -2,7 +2,6 @@ package renderer
 
 import rl "vendor:raylib"
 
-//do i need a renderer_config??
 
 Renderer_State :: struct {
 	logical_width:  i32,
@@ -13,6 +12,7 @@ Renderer_State :: struct {
 	shaders:        Shader_State,
 	particles:      Particle_System,
 	fonts:          Font_State,
+	draw_buffer:    Draw_Buffer,
 }
 
 Render_Target :: rl.RenderTexture2D
