@@ -78,6 +78,7 @@ Title_State :: struct {
 	alger_font:      eng.Font_ID,
 	fira_font:       eng.Font_ID,
 	test_draw_cmd:   eng.Draw_Command,
+	test_draw_cmd_2: eng.Draw_Command,
 	tileset:         rl.Texture2D,
 	tilemap:         eng.Tilemap,
 }
@@ -172,6 +173,13 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 
 	s.test_draw_cmd = eng.Draw_Command {
 		scale       = 1.5,
+		rotation    = 0,
+		pivot_point = .CENTER,
+		tint        = rl.WHITE,
+	}
+
+	s.test_draw_cmd_2 = eng.Draw_Command {
+		scale       = 5,
 		rotation    = 0,
 		pivot_point = .CENTER,
 		tint        = rl.WHITE,
@@ -304,11 +312,17 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 
 	eng.draw_font(&e.renderer.fonts, s.alger_font, "Sunforge Testing", {100, -50}, 48, 5, rl.GREEN)
+	//setting up 2 sprites to blit to the screen. change the z of each to see them move infront or behind each other
 	s.test_draw_cmd.sprite = eng.get_sprite_for_animation(&s.anim_state)
 	s.test_draw_cmd.position = s.player_position
 	s.test_draw_cmd.flip = s.player_facing
-	s.test_draw_cmd.z = s.player_position.y
+	s.test_draw_cmd.z = 1
+	s.test_draw_cmd_2.sprite = eng.get_sprite_for_animation(&s.anim_state)
+	s.test_draw_cmd_2.position = s.player_position
+	s.test_draw_cmd_2.flip = s.player_facing
+	s.test_draw_cmd_2.z = 2
 	eng.draw_buffer_push(&e.renderer.draw_buffer, s.test_draw_cmd)
+	eng.draw_buffer_push(&e.renderer.draw_buffer, s.test_draw_cmd_2)
 	eng.draw_buffer_flush(&e.renderer.draw_buffer)
 
 
