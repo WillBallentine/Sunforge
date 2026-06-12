@@ -13,6 +13,7 @@ This document summarizes Sunforge's development to date, grouped by engine syste
 - **Window**: configurable window (size, title, target FPS), fullscreen toggle, and runtime resize handling for resizeable windows
 - **Clock**: delta-time tracking with a cap to avoid large time steps after a stall
 - **Input**: keyboard and gamepad action bindings (`input_bind_keyboard` / `input_bind_controller`), pressed/held/released state tracking, mouse position/delta/wheel/button state, and basic gamepad/controller support
+- **Math**: `Vec2`/`Rect` types plus `lerp`/`clamp`/`vec2_*`/`rect_contains` helpers; `lerp` is used for particle color and size gradient interpolation
 
 ## Renderer
 
@@ -25,6 +26,8 @@ This document summarizes Sunforge's development to date, grouped by engine syste
 - **Shaders**: fragment shader loading, uniform setters (float, vec2, texture), and a post-processing blit path
 - **Tilemap**: multi-layer tile grids with viewport-culled rendering and a per-tile collision/solid layer
 - **Particles**: fixed 1024-particle pool with per-burst configurable velocity range, color gradient, size gradient, lifetime, and gravity, with oldest-particle recycling when the pool is full
+- **Draw order / z-sorting**: added `Draw_Buffer` (up to 2048 `Draw_Command`s — sprite, position, scale, rotation, pivot, flip, tint, z) to `Renderer_State`. `draw_buffer_flush` sorts by `z` ascending via insertion sort and draws each command via `renderer_draw_sprite`, then clears the buffer. Re-exported from `engine.odin`; game code now pushes draw commands (`draw_buffer_push`) once per frame instead of calling sprite-draw directly
+- **Sprite rotation and pivot**: `renderer_draw_sprite` gained a `rotation` (degrees) parameter and a `Pivot_Point` enum (`CENTER`, `BOTTOM`) for the rotation/scale origin — `CENTER` for a sprite's center, `BOTTOM` for its "feet". `Draw_Command` carries both
 
 ## Example / Tooling
 

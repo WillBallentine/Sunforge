@@ -18,6 +18,7 @@ Sunforge is **pre-v1** and under active development. APIs are unstable and may c
 - **Window**: configurable size/title/target FPS, fullscreen toggle, and runtime resize handling for resizeable windows
 - **Clock**: delta-time tracking with a frame-time cap to avoid large time steps after a stall
 - **Input**: keyboard and gamepad action bindings, pressed/held/released state tracking, and mouse position/delta/wheel/button state
+- **Math**: small `Vec2`/`Rect` types and `lerp`/`clamp`/`vec2_*`/`rect_contains` helpers. `lerp` drives particle color/size gradient interpolation; `Vec2`/`Rect` are early utilities pending consolidation with `rl.Vector2`/`rl.Rectangle` that will be enhanced in future updates
 
 ### Renderer (`engine/renderer`)
 - **Render targets**: offscreen targets for compositing layers (e.g. world + UI), blitted together each frame
@@ -29,9 +30,12 @@ Sunforge is **pre-v1** and under active development. APIs are unstable and may c
 - **Shaders**: fragment shader loading, uniform setters (float, vec2, texture), and a post-processing blit path
 - **Tilemap**: multi-layer tile grids with viewport-culled rendering and a per-tile collision layer
 - **Particles**: fixed 1024-particle pool with configurable velocity range, color gradient, size gradient, lifetime, and gravity per burst
+- **Draw order / z-sorting**: a per-frame draw command buffer ('Draw_Buffer', up to 2048 commands). 'draw_buffer_push' queues a 'Draw_Command'; 'draw_buffer_flush' sorts the queue back-to-front by a 'z' key using insertion sort (cheap for nearly-sorted per-frame data), draws each via `renderer_draw_sprite`, then resets the buffer, so depth ordering "just works" without manual call order
+- **Sprite rotation & pivot**: `renderer_draw_sprite` supports rotation (degrees, clockwise) and a `Pivot_Point` (`CENTER` or `BOTTOM`) controlling the rotation and scale origin (this will be enhanced in future updates)
 
 ### Example
-[main.odin](main.odin) ties these systems together in one scene: a tilemap-based level, a player character with idle/walk/jump-flip animations (landing triggers a particle burst via a frame event), jump particle effects, camera follow with shake on jump, a font-rendered title, and a debug overlay of live input state rendered with a second font.
+[main.odin](main.odin) ties these systems together in one scene: a tilemap-based level, a player character with idle/walk/jump-flip animations (landing triggers a particle burst via a frame event) pushed through the z-sorted draw buffer with rotation and pivot, jump particle effects, camera follow with shake on jump, a font-rendered title, and a debug overlay of live input state rendered with a second font.
+
 
 ## Not Yet Implemented
 
