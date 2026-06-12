@@ -64,7 +64,7 @@ Title_State :: struct {
 	confirm_pressed: bool,
 	player_position: rl.Vector2,
 	player_facing:   eng.Flip,
-	sprite:          rl.Texture2D,
+	sprite:          eng.Sprite,
 	idle_anim:       eng.Animation,
 	walk_anim:       eng.Animation,
 	flip_anim:       eng.Animation,
@@ -77,6 +77,8 @@ Title_State :: struct {
 	post_shader:     eng.Shader_ID,
 	alger_font:      eng.Font_ID,
 	fira_font:       eng.Font_ID,
+	test_draw_cmd:   eng.Draw_Command,
+	test_draw_cmd_2: eng.Draw_Command,
 	tileset:         rl.Texture2D,
 	tilemap:         eng.Tilemap,
 }
@@ -131,11 +133,11 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 
 	s.world_target = eng.make_render_target(&e.renderer)
 	s.ui_target = eng.make_render_target(&e.renderer)
-	s.sprite = rl.LoadTexture("./test.png")
+	s.sprite.texture = rl.LoadTexture("./test.png")
 	s.player_facing = .HORIZONTAL
 
 	s.idle_anim = eng.Animation {
-		texture           = s.sprite,
+		texture           = s.sprite.texture,
 		first_frame_index = 0,
 		frame_w           = 48,
 		frame_h           = 48,
@@ -146,7 +148,7 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 
 	s.flip_anim = eng.Animation {
-		texture = s.sprite,
+		texture = s.sprite.texture,
 		first_frame_index = 24,
 		frame_w = 48,
 		frame_h = 48,
@@ -159,7 +161,7 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 
 	s.walk_anim = eng.Animation {
-		texture           = s.sprite,
+		texture           = s.sprite.texture,
 		first_frame_index = 7,
 		frame_w           = 48,
 		frame_h           = 48,
@@ -167,6 +169,20 @@ title_init :: proc(e: ^eng.Engine, data: rawptr) {
 		columns           = 7,
 		fps               = 8,
 		looping           = true,
+	}
+
+	s.test_draw_cmd = eng.Draw_Command {
+		scale       = 1.5,
+		rotation    = 0,
+		pivot_point = .CENTER,
+		tint        = rl.WHITE,
+	}
+
+	s.test_draw_cmd_2 = eng.Draw_Command {
+		scale       = 5,
+		rotation    = 0,
+		pivot_point = .CENTER,
+		tint        = rl.WHITE,
 	}
 
 	s.anim_state = eng.create_animation_state(&s.idle_anim)
@@ -195,7 +211,6 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 		eng.add_trauma(&s.camera, 0.5)
 	}
 
-	//eng.draw_basic_shape(fmt.ctprintf("dt: %v", dt), 0, 0, 48, rl.GREEN)
 	if int(dt) % 2 > 0 {
 		p_config := eng.Particle_Config {
 			position     = s.player_position,
@@ -238,7 +253,6 @@ title_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	if eng.input_pressed(&e.input, act(.UP_Arrow)) {
 		new_height := e.window.height + 50
 		new_width := e.window.width + 50
-		//eng.draw_basic_shape(fmt.ctprintf("new height: %s", new_height), 100, 100, 100, rl.WHITE)
 		eng.set_window_size(&e.window, new_width, new_height)
 	}
 	if eng.input_pressed(&e.input, act(.Back)) {
@@ -298,8 +312,18 @@ title_render :: proc(e: ^eng.Engine, data: rawptr) {
 	)
 
 	eng.draw_font(&e.renderer.fonts, s.alger_font, "Sunforge Testing", {100, -50}, 48, 5, rl.GREEN)
-	sprite := eng.get_sprite_for_animation(&s.anim_state)
-	eng.draw_texture(sprite, s.player_position, 1.0, s.player_facing, rl.WHITE)
+	//setting up 2 sprites to blit to the screen. change the z of each to see them move infront or behind each other
+	s.test_draw_cmd.sprite = eng.get_sprite_for_animation(&s.anim_state)
+	s.test_draw_cmd.position = s.player_position
+	s.test_draw_cmd.flip = s.player_facing
+	s.test_draw_cmd.z = 1
+	s.test_draw_cmd_2.sprite = eng.get_sprite_for_animation(&s.anim_state)
+	s.test_draw_cmd_2.position = s.player_position
+	s.test_draw_cmd_2.flip = s.player_facing
+	s.test_draw_cmd_2.z = 2
+	eng.draw_buffer_push(&e.renderer.draw_buffer, s.test_draw_cmd)
+	eng.draw_buffer_push(&e.renderer.draw_buffer, s.test_draw_cmd_2)
+	eng.draw_buffer_flush(&e.renderer.draw_buffer)
 
 
 	eng.end_camera()

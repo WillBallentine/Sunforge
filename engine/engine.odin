@@ -36,7 +36,11 @@ renderer_clear :: rend.renderer_clear
 blit :: rend.renderer_blit
 begin_camera :: rend.renderer_begin_camera
 end_camera :: rend.renderer_end_camera
-draw_texture :: rend.draw_texture
+Sprite :: rend.Sprite
+Draw_Command :: rend.Draw_Command
+Pivot_Point :: rend.Pivot_Point
+draw_buffer_push :: rend.draw_buffer_push
+draw_buffer_flush :: rend.draw_buffer_flush
 draw_basic_shape :: rend.draw_basic_shape
 get_sprite :: rend.get_sprite
 //shaders
