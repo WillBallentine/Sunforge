@@ -12,6 +12,8 @@ Sunforge is a 2D game engine written in [Odin](https://odin-lang.org/) on top of
 
 Sunforge is **pre-v1** and under active development. APIs are unstable and may change without notice. See [Roadmap](#roadmap) for what's planned, and [CONTRIBUTING.md](CONTRIBUTING.md) if you'd like to help.
 
+**NOTE**: the visuals of the app are not final. I am currently in the "get it working" pass of the engine and visuals will come in a beautification pass later in development
+
 ## Current Features
 
 ### Project System (`project/`)
@@ -51,7 +53,7 @@ These packages exist as stubs and are planned for upcoming tiers (see [Roadmap](
 - `engine/audio`: sound and music playback
 - `engine/assets`: asset caching and hot-reload
 - `engine/ui`: immediate-mode UI system for in-game UI (separate from the editor-only `editor/ui` toolkit, which now exists)
-- Editor panel content: asset browser, scene/tilemap editors, entity inspector (panels currently render as empty placeholders)
+- Editor panel content: (just added) asset browser, scene/tilemap editors, entity inspector (scene and inspector panels currently render as empty placeholders)
 - Entity/scene management, timers, events, save system, scripting, and more
 
 ## Getting Started
