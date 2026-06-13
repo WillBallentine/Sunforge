@@ -19,6 +19,13 @@ Project_Data :: struct {
 	icon_path:   string,
 }
 
+Picker_Data :: struct {
+	name:        string,
+	entry_scene: string,
+	window:      engCore.Window_Config,
+	icon_path:   string,
+}
+
 
 project_create :: proc(root: string, name: string) -> (Project_Data, bool) {
 	manifest_path, _ := filepath.join({root, PROJECT_FILE})
