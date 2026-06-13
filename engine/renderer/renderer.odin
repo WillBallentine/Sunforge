@@ -35,6 +35,10 @@ renderer_make_target :: proc(state: ^Renderer_State) -> Render_Target {
 	return rl.LoadRenderTexture(state.logical_width, state.logical_height)
 }
 
+renderer_make_target_sized :: proc(state: ^Renderer_State, width, height: i32) -> Render_Target {
+	return rl.LoadRenderTexture(width, height)
+}
+
 renderer_destroy_target :: proc(target: Render_Target) {
 	rl.UnloadRenderTexture(target)
 }
