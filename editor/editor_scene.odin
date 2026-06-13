@@ -22,10 +22,11 @@ Panel_Layout :: struct {
 }
 
 Editor_State :: struct {
-	project_root: string,
-	project:      proj.Project_Data,
-	edit_camera:  eng.Camera_State,
-	world_target: eng.Render_Target,
+	project_root:  string,
+	project:       proj.Project_Data,
+	asset_browser: Asset_Browser_State,
+	edit_camera:   eng.Camera_State,
+	world_target:  eng.Render_Target,
 }
 
 editor_scene :: proc(root: string, project: proj.Project_Data) -> eng.Scene_Procs {
@@ -55,16 +56,19 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 	rl.SetWindowMinSize(PANEL_LEFT_WIDTH + PANEL_RIGHT_WIDTH + 400, PANEL_BOTTOM_HEIGHT + 400)
 
 	s.world_target = eng.make_render_target(&e.renderer)
+	s.asset_browser = asset_browser_init(s.project_root)
 }
 
 editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	s := cast(^Editor_State)data
+	panels := compute_panel_layout()
 
 	if e.input.mouse.middle.held || e.input.mouse.right.held {
 		s.edit_camera.camera.target -= e.input.mouse.delta / s.edit_camera.camera.zoom
 	}
 
-	if e.input.mouse.wheel != 0 {
+	if e.input.mouse.wheel != 0 &&
+	   !rl.CheckCollisionPointRec(e.input.mouse.position, panels.bottom) {
 		s.edit_camera.camera.zoom += e.input.mouse.wheel * EDIT_ZOOM_SPEED
 		s.edit_camera.camera.zoom = engCore.clamp(
 			s.edit_camera.camera.zoom,
@@ -110,12 +114,14 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 
 	ui.ui_panel(panels.left, "Palette")
 	ui.ui_panel(panels.right, "Inspector")
-	ui.ui_panel(panels.bottom, "Assets")
+	assets_rect := ui.ui_panel(panels.bottom, "Assets")
+	asset_browser_render(&s.asset_browser, assets_rect, e.input.mouse.wheel)
 }
 
 editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Editor_State)data
 	eng.destroy_render_target(s.world_target)
+	asset_browser_destroy(&s.asset_browser)
 	free(data)
 }
 
