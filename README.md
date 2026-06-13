@@ -18,7 +18,7 @@ Sunforge is **pre-v1** and under active development. APIs are unstable and may c
 - **Project System**: a portable project layout (project.json + resources/ + scenes/) independent of the Sunforge source tree. Project_Data (name, entry scene, window config, icon path) is created/loaded/saved via project_create/project_open/project_save; project_apply_icon applies a project's window icon via rl.LoadImage/rl.SetWindowIcon.
 
 ### Editor (`editor/`)
-- **Editor**: a separate executable (editor/) for creating and opening Sunforge projects. Currently a console-based picker (type a folder path to create or open a project) with a recently-opened-projects list persisted to recent_projects.json next to the executable. Full editor UI/shell is pending
+- **Editor**: a separate executable (editor/) for creating and opening Sunforge projects. Project setup is console-based (type a folder path to create or open a project), with a recently-opened-projects list persisted to recent_projects.json next to the executable. Once a project loads, the editor opens into a shell with an independent free-fly edit camera (right/middle-mouse drag to pan, scroll wheel to zoom), an empty world viewport rendered via the render-target/blit pipeline, and a resize-aware three-panel layout (Palette, Inspector, Assets) built on a custom immediate-mode UI toolkit (editor/ui/).
 
 ### Core (`engine/core`)
 - **Window**: configurable size/title/target FPS, fullscreen toggle, and runtime resize handling for resizeable windows
@@ -50,8 +50,8 @@ These packages exist as stubs and are planned for upcoming tiers (see [Roadmap](
 - `engine/physics`: collision/physics world
 - `engine/audio`: sound and music playback
 - `engine/assets`: asset caching and hot-reload
-- `engine/ui`: immediate-mode UI system
-- Editor UI/shell, asset browser, scene/tilemap editors
+- `engine/ui`: immediate-mode UI system for in-game UI (separate from the editor-only `editor/ui` toolkit, which now exists)
+- Editor panel content: asset browser, scene/tilemap editors, entity inspector (panels currently render as empty placeholders)
 - Entity/scene management, timers, events, save system, scripting, and more
 
 ## Getting Started
@@ -77,9 +77,10 @@ engine/
   project/                  Project_Data manifest, project_create/open/save, icon application
   editor/
     main.odin               editor entry point (project picker)
+    editor_scene.odin       editor shell: edit camera, world viewport, panel layout
     recent_projects.odin    recently opened project
     build_editor.bat
-    
+    ui/                     immediate-mode UI toolkit for editor panels (buttons, sliders, color pickers, etc)
   core/                     window, clock, input, math (foundation)
   renderer/                 rendering, camera, sprites, animation, tilemap, particles, shaders, fonts
   physics/                  (stub, planned)

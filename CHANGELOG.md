@@ -37,8 +37,10 @@ This document summarizes Sunforge's development to date, grouped by engine syste
 
 ## Editor
 **NEW**
-- **editor package** (`package main`): entry point prompts for a project folder, opens it via project_open if project.json exists or creates it via project_create otherwise. Console-based for now, pending future work
+- **editor package** (`package main`): entry point prompts for a project folder, opens it via project_open if project.json exists or creates it via project_create otherwise
 - **recent_projects.odin**: tracks recently opened/created project paths in recent_projects.json, stored next to the editor executable
+- **editor/ui toolkit** (`editor/ui/`): immediate-mode widget set for the editor UI: ui_panel, ui_button, ui_checkbox, ui_drag_float, ui_slider_float, ui_color_picker, ui_combo, ui_tree_node, and ui_text_input, with shared hover/active state tracked via a single UI_Context
+- **editor_scene.odin**: the editor shell, an independent edit camera with free-fly pan (right/middle-mouse drag) and scroll-wheel zoom (clamped 0.1-5.0), an empty world viewport rendered through the render-target/camera/blit pipeline, and a resize-aware three-panel layout (Palette, Inspector, Assets) built on the editor/ui toolkit
 - **build_editor.bat**: builds the editor to bin/editor_debug.exe
 
 ## Example / Tooling
@@ -48,5 +50,5 @@ This document summarizes Sunforge's development to date, grouped by engine syste
 
 ## Looking Ahead
 
-tier-0-editor work has begun with #108 (project system foundation); editor shell, UI toolkit, and asset browser are next.
+tier-0-editor work continues: the project system foundation, editor UI toolkit, and editor shell with edit camera and panel layout are in place; asset browser, entity inspector, and scene/tilemap editor panel content are next.
 See [README.md](README.md#roadmap) and the [issue tracker](https://github.com/WillBallentine/Sunforge/issues) for planned work across tier-0 through tier-10 and post-v1.
