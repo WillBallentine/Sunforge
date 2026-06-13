@@ -41,8 +41,8 @@ project_create :: proc(root: string, name: string) -> (Project_Data, bool) {
 	title := strings.clone_to_cstring(name)
 
 	data := Project_Data {
-		name = name,
-		entry_scene = "",
+		name = strings.clone(name),
+		entry_scene = strings.clone(""),
 		window = engCore.Window_Config {
 			width = 1280,
 			height = 720,
@@ -50,7 +50,7 @@ project_create :: proc(root: string, name: string) -> (Project_Data, bool) {
 			target_fps = 60,
 			is_resizeable = true,
 		},
-		icon_path = "",
+		icon_path = strings.clone(""),
 	}
 
 	if !project_save(root, data) do return {}, false
