@@ -29,6 +29,7 @@ renderer_init :: rend.renderer_init
 world_to_screen :: rend.renderer_world_to_screen
 screen_to_world :: rend.renderer_screen_to_world
 make_render_target :: rend.renderer_make_target
+make_render_target_sized :: rend.renderer_make_target_sized
 destroy_render_target :: rend.renderer_destroy_target
 begin_render_target :: rend.renderer_begin_target
 end_render_target :: rend.renderer_end_target

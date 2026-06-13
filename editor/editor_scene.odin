@@ -18,6 +18,7 @@ Panel_Layout :: struct {
 	left:   rl.Rectangle,
 	right:  rl.Rectangle,
 	bottom: rl.Rectangle,
+	world:  rl.Rectangle,
 }
 
 Editor_State :: struct {
@@ -51,6 +52,7 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 		shake_max = 0,
 	)
 	s.edit_camera.camera.target = {0, 0}
+	rl.SetWindowMinSize(PANEL_LEFT_WIDTH + PANEL_RIGHT_WIDTH + 400, PANEL_BOTTOM_HEIGHT + 400)
 
 	s.world_target = eng.make_render_target(&e.renderer)
 }
@@ -76,6 +78,18 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 
 editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Editor_State)data
+	panels := compute_panel_layout()
+
+	if i32(panels.world.width) != s.world_target.texture.width ||
+	   i32(panels.world.height) != s.world_target.texture.height {
+		eng.destroy_render_target(s.world_target)
+		s.world_target = eng.make_render_target_sized(
+			&e.renderer,
+			i32(panels.world.width),
+			i32(panels.world.height),
+		)
+		s.edit_camera.camera.offset = {panels.world.width / 2, panels.world.height / 2}
+	}
 
 	eng.begin_render_target(s.world_target)
 	eng.renderer_clear(rl.Color{40, 40, 45, 255})
@@ -83,9 +97,17 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.end_camera()
 	eng.end_render_target()
 
+	rl.DrawTexturePro(
+		s.world_target.texture,
+		{0, 0, f32(s.world_target.texture.width), -f32(s.world_target.texture.height)},
+		panels.world,
+		{0, 0},
+		0,
+		rl.WHITE,
+	)
+
 	eng.blit(&e.renderer, s.world_target)
 
-	panels := compute_panel_layout()
 	ui.ui_panel(panels.left, "Palette")
 	ui.ui_panel(panels.right, "Inspector")
 	ui.ui_panel(panels.bottom, "Assets")
@@ -104,6 +126,12 @@ compute_panel_layout :: proc() -> Panel_Layout {
 		left = {0, 0, PANEL_LEFT_WIDTH, sh - PANEL_BOTTOM_HEIGHT},
 		right = {sw - PANEL_RIGHT_WIDTH, 0, PANEL_RIGHT_WIDTH, sh - PANEL_BOTTOM_HEIGHT},
 		bottom = {0, sh - PANEL_BOTTOM_HEIGHT, sw, PANEL_BOTTOM_HEIGHT},
+		world = {
+			PANEL_LEFT_WIDTH,
+			0,
+			sw - PANEL_LEFT_WIDTH - PANEL_RIGHT_WIDTH,
+			sh - PANEL_BOTTOM_HEIGHT,
+		},
 	}
 }
 
