@@ -83,6 +83,7 @@ engine/
     project_picker_scene.odin   initial screen for the editor allowing the user to select/create projects
     recent_projects.odin        recently opened project
     folder_picker_windows.odin  ask the user for a folder
+    asset_browser.odin          populates asset panel with selectable assets located in the project resources dir with thumbnails for textures
     build_editor.bat
     ui/                         immediate-mode UI toolkit for editor panels (buttons, sliders, color pickers, etc)
   core/                         window, clock, input, math (foundation)
