@@ -19,7 +19,7 @@ PICKER_WINDOW_CONFIG :: eng.Window_Config {
 	height        = PICKER_HEIGHT,
 	title         = "Sunforge Editor",
 	target_fps    = 60,
-	is_resizeable = false, //TODO: remember the note about this not being reset after scene change?
+	is_resizeable = false,
 }
 
 
@@ -152,10 +152,9 @@ try_open :: proc(e: ^eng.Engine, s: ^Picker_State, root: string) -> bool {
 
 	rl.SetWindowSize(project.window.width, project.window.height)
 	rl.SetWindowTitle(project.window.title)
-	if project.window.is_resizeable {
-		rl.SetWindowState({.WINDOW_RESIZABLE, .WINDOW_ALWAYS_RUN})
-	}
+	eng.window_set_resizeable(&e.window, true)
 	project_root := strings.clone(root)
+
 	eng.scene_push(e, editor_scene(project_root, project))
 	return true
 }
