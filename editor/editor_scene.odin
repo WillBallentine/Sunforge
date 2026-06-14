@@ -16,6 +16,11 @@ EDIT_ZOOM_SPEED :: 0.1
 EDIT_ZOOM_MIN :: 0.1
 EDIT_ZOOM_MAX :: 5.0
 
+Editor_Action :: enum u32 {
+	Undo,
+	Redo,
+}
+
 Panel_Layout :: struct {
 	left:   rl.Rectangle,
 	right:  rl.Rectangle,
@@ -30,6 +35,11 @@ Editor_State :: struct {
 	edit_camera:   eng.Camera_State,
 	world_target:  eng.Render_Target,
 	current_scene: Scene_Data,
+	history:       Editor_History,
+}
+
+act :: #force_inline proc(a: Editor_Action) -> eng.Action_ID {
+	return eng.Action_ID(a)
 }
 
 editor_scene :: proc(root: string, project: proj.Project_Data) -> eng.Scene_Procs {
@@ -70,6 +80,9 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 		s.current_scene = default_title_scene()
 		scene_save(scene_path, s.current_scene)
 	}
+
+	eng.input_bind_keyboard(&e.input, act(.Undo), .Z)
+	eng.input_bind_keyboard(&e.input, act(.Undo), .Y)
 }
 
 editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
@@ -88,6 +101,14 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 			EDIT_ZOOM_MIN,
 			EDIT_ZOOM_MAX,
 		)
+	}
+
+	ctrl_down := rl.IsKeyDown(.LEFT_CONTROL) || rl.IsKeyDown(.RIGHT_CONTROL)
+	if ctrl_down && eng.input_pressed(&e.input, act(.Undo)) {
+		history_undo(&s.history)
+	}
+	if ctrl_down && eng.input_pressed(&e.input, act(.Redo)) {
+		history_redo(&s.history)
 	}
 
 	ui.ui_begin(&e.input)
@@ -135,6 +156,7 @@ editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Editor_State)data
 	eng.destroy_render_target(s.world_target)
 	asset_browser_destroy(&s.asset_browser)
+	history_destroy(&s.history)
 	free(data)
 }
 
