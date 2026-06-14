@@ -32,7 +32,7 @@ tile_edit_do :: proc(data: rawptr) {
 
 tile_edit_undo :: proc(data: rawptr) {
 	d := cast(^Tile_Edit_Data)data
-	eng.tilemap_set_tile(d.tilemap, d.layer, d.col, d.row, d.new_index)
+	eng.tilemap_set_tile(d.tilemap, d.layer, d.col, d.row, d.old_index)
 }
 
 tile_stroke_do :: proc(data: rawptr) {
@@ -47,11 +47,11 @@ tile_stroke_undo :: proc(data: rawptr) {
 	d := cast(^Tile_Stroke_Data)data
 	for i in 0 ..< d.count {
 		cell := d.cells[i]
-		eng.tilemap_set_tile(d.tilemap, d.layer, cell.col, cell.row, cell.new_index)
+		eng.tilemap_set_tile(d.tilemap, d.layer, cell.col, cell.row, cell.old_index)
 	}
 }
 
-make_tile_stoke_command :: proc(
+make_tile_stroke_command :: proc(
 	tm: ^eng.Tilemap,
 	layer: i32,
 	cells: []Tile_Cell_Edit,
@@ -69,7 +69,7 @@ make_tile_stoke_command :: proc(
 	return Editor_Command{do_fn = tile_stroke_do, undo_fn = tile_stroke_undo, data = d}
 }
 
-make_title_edit_command :: proc(
+make_tile_edit_command :: proc(
 	tm: ^eng.Tilemap,
 	layer, col, row, old_index, new_index: i32,
 ) -> Editor_Command {

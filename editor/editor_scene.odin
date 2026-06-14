@@ -82,7 +82,7 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 
 	eng.input_bind_keyboard(&e.input, act(.Undo), .Z)
-	eng.input_bind_keyboard(&e.input, act(.Undo), .Y)
+	eng.input_bind_keyboard(&e.input, act(.Redo), .Y)
 }
 
 editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
