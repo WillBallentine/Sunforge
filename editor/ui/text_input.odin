@@ -41,18 +41,19 @@ ui_text_input :: proc(rect: rl.Rectangle, value: ^string) {
 			delete(value^)
 			value^ = new_val
 		}
-
-		rl.DrawRectangleRec(rect, BUTTON_BG)
-		rl.DrawRectangleLinesEx(rect, 1, BORDER_ACTIVE if (hovered || is_active) else BORDER)
-
-		cstr := strings.clone_to_cstring(value^, context.temp_allocator)
-		rl.DrawText(cstr, i32(rect.x) + PADDING, row_text_y(rect), FONT_SIZE, TEXT)
-
-		if is_active {
-			text_w := rl.MeasureText(cstr, FONT_SIZE)
-			cursor_x := i32(rect.x) + PADDING + text_w + 1
-			rl.DrawRectangle(cursor_x, i32(rect.y) + 3, 1, i32(rect.height) - 6, ACCENT)
-		}
 	}
+
+	rl.DrawRectangleRec(rect, BUTTON_BG)
+	rl.DrawRectangleLinesEx(rect, 1, BORDER_ACTIVE if (hovered || is_active) else BORDER)
+
+	cstr := strings.clone_to_cstring(value^, context.temp_allocator)
+	rl.DrawText(cstr, i32(rect.x) + PADDING, row_text_y(rect), FONT_SIZE, TEXT)
+
+	if is_active {
+		text_w := rl.MeasureText(cstr, FONT_SIZE)
+		cursor_x := i32(rect.x) + PADDING + text_w + 1
+		rl.DrawRectangle(cursor_x, i32(rect.y) + 3, 1, i32(rect.height) - 6, ACCENT)
+	}
+
 }
 
