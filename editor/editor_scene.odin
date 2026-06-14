@@ -4,6 +4,8 @@ import eng "../engine"
 import engCore "../engine/core"
 import proj "../project"
 import ui "./ui"
+import "core:path/filepath"
+import "core:strings"
 import rl "vendor:raylib"
 
 PANEL_LEFT_WIDTH :: 220
@@ -27,6 +29,7 @@ Editor_State :: struct {
 	asset_browser: Asset_Browser_State,
 	edit_camera:   eng.Camera_State,
 	world_target:  eng.Render_Target,
+	current_scene: Scene_Data,
 }
 
 editor_scene :: proc(root: string, project: proj.Project_Data) -> eng.Scene_Procs {
@@ -57,6 +60,16 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 
 	s.world_target = eng.make_render_target(&e.renderer)
 	s.asset_browser = asset_browser_init(s.project_root)
+
+	scene_path, _ := filepath.join({s.project_root, proj.SCENES_DIR, "level_01.json"})
+	defer delete(scene_path)
+
+	if loaded, ok := scene_load(scene_path); ok {
+		s.current_scene = loaded
+	} else {
+		s.current_scene = default_title_scene()
+		scene_save(scene_path, s.current_scene)
+	}
 }
 
 editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
@@ -139,5 +152,30 @@ compute_panel_layout :: proc() -> Panel_Layout {
 			sh - PANEL_BOTTOM_HEIGHT,
 		},
 	}
+}
+
+
+//for testing for now this will be removed once the proper editor is up and working
+default_title_scene :: proc() -> Scene_Data {
+	scene := Scene_Data {
+		tilemap_path = strings.clone("resources/tilemaps/level_01.json"),
+		entities = make([]Entity_Data, 1),
+		camera = Camera_Config_Data{follow_speed = 6.0, zoom = 1.0},
+	}
+
+	scene.entities[0] = Entity_Data {
+		name              = strings.clone("player"),
+		position          = rl.Vector2{635, 201},
+		sprite_sheet_path = strings.clone("resources/textures/test.png"),
+		animation         = strings.clone("idle"),
+		tags              = make([]string, 2),
+		properties        = make(map[string]string),
+	}
+
+	scene.entities[0].tags[0] = strings.clone("player")
+	scene.entities[0].tags[1] = strings.clone("controllable")
+	scene.entities[0].properties[strings.clone("speed")] = strings.clone("200")
+
+	return scene
 }
 
