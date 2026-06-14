@@ -9,6 +9,7 @@ Window_Config :: core.Window_Config
 Action_ID :: core.Action_ID
 set_window_size :: core.window_set_size
 toggle_fullscreen :: core.window_toggle_fullscreen
+window_set_resizeable :: core.window_set_resizeable
 
 //controls
 input_bind_keyboard :: core.input_bind_keyboard

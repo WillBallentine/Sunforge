@@ -45,6 +45,15 @@ window_set_size :: proc(w: ^Window_State, width, height: i32) {
 	rl.SetWindowSize(w.width, w.height)
 }
 
+window_set_resizeable :: proc(w: ^Window_State, resizeable: bool) {
+	if resizeable {
+		rl.SetWindowState({.WINDOW_RESIZABLE, .WINDOW_ALWAYS_RUN})
+	} else {
+		rl.ClearWindowState({.WINDOW_RESIZABLE})
+	}
+	w.is_resizeable = resizeable
+}
+
 window_handle_resize :: proc(wstate: ^Window_State, w, h: i32) {
 	if !wstate.is_resizeable do return
 
