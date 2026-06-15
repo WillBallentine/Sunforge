@@ -1,8 +1,11 @@
 package renderer
 
+import "core:encoding/json"
+import "core:os"
 import rl "vendor:raylib"
 
 MAX_TILE_LAYERS :: 4
+TILED_FLIP_MASK :: u32(0xE0000000)
 
 Tilemap :: struct {
 	tiles:      [][]i32,
@@ -16,6 +19,49 @@ Tilemap :: struct {
 	ts_columns: i32,
 }
 
+Tiled_Property :: struct {
+	name:  string,
+	type:  string,
+	value: json.Value,
+}
+
+Tiled_Tile :: struct {
+	id:         i32,
+	properties: []Tiled_Property,
+}
+
+Tiled_Tileset :: struct {
+	firstgid:   u32,
+	image:      string,
+	tilewidth:  i32,
+	tileheight: i32,
+	columns:    i32,
+	tilecount:  i32,
+	tiles:      []Tiled_Tile,
+}
+
+Tiled_Layer :: struct {
+	type:     string,
+	name:     string,
+	encoding: string,
+	data:     []u32,
+}
+
+Tiled_Map :: struct {
+	width:       i32,
+	height:      i32,
+	tilewidth:   i32,
+	tileheight:  i32,
+	orientation: string,
+	layers:      []Tiled_Layer,
+	tilesets:    []Tiled_Tileset,
+}
+
+Tiled_Tileset_Ref :: struct {
+	tilesets: []struct {
+		image: string,
+	},
+}
 
 tilemap_create :: proc(
 	cols, rows, tile_w, tile_h, layers: i32,
@@ -108,5 +154,139 @@ tilemap_destroy :: proc(tm: ^Tilemap) {
 	}
 	delete(tm.tiles)
 	delete(tm.solid)
+}
+
+tilemap_load_tiled :: proc(path: string, tileset: rl.Texture2D) -> (Tilemap, bool) {
+	bytes, err := os.read_entire_file(path, context.allocator)
+	if err != nil {
+		return {}, false
+	}
+	defer delete(bytes)
+
+	tiled: Tiled_Map
+	defer tiled_map_destroy(&tiled)
+	if json.unmarshal(bytes, &tiled) != nil {
+		return {}, false
+	}
+
+	if tiled.orientation != "orthogonal" {
+		return {}, false
+	}
+	if len(tiled.tilesets) != 1 {
+		return {}, false
+	}
+
+	tile_layer_data: [MAX_TILE_LAYERS][]u32
+	tile_layer_count := 0
+	for layer in tiled.layers {
+		if layer.type != "tilelayer" do continue
+		if layer.encoding != "" {
+			return {}, false
+		}
+
+		if len(layer.data) != int(tiled.width * tiled.height) {
+			return {}, false
+		}
+
+		if tile_layer_count >= MAX_TILE_LAYERS {
+			return {}, false
+		}
+
+		tile_layer_data[tile_layer_count] = layer.data
+		tile_layer_count += 1
+	}
+
+	if tile_layer_count == 0 {
+		return {}, false
+	}
+
+	ts := tiled.tilesets[0]
+
+	tm: Tilemap
+	tm.cols = tiled.width
+	tm.rows = tiled.height
+	tm.tile_w = tiled.tilewidth
+	tm.tile_h = tiled.tileheight
+	tm.layers = i32(tile_layer_count)
+	tm.tileset = tileset
+	tm.ts_columns = ts.columns
+
+	tm.tiles = make([][]i32, tm.layers)
+	for i in 0 ..< tile_layer_count {
+		cells := make([]i32, tm.rows * tm.cols)
+		for gid, cell_i in tile_layer_data[i] {
+			if gid == 0 {
+				cells[cell_i] = -1
+				continue
+			}
+			clean_gid := gid & ~TILED_FLIP_MASK
+			cells[cell_i] = i32(clean_gid) - i32(ts.firstgid)
+		}
+		tm.tiles[i] = cells
+	}
+
+	ts_rows := tileset.height / tm.tile_h
+	tm.solid = make([]bool, int(ts.columns * ts_rows))
+	for tile in ts.tiles {
+		for prop in tile.properties {
+			if prop.name != "solid" do continue
+			if b, bok := prop.value.(json.Boolean); bok && bool(b) {
+				if int(tile.id) >= 0 && int(tile.id) < len(tm.solid) {
+					tm.solid[tile.id] = true
+				}
+			}
+		}
+	}
+
+	return tm, true
+}
+
+tiled_get_tileset_image :: proc(path: string) -> (image_path: string, ok: bool) {
+	bytes, err := os.read_entire_file(path, context.allocator)
+	if err != nil {
+		return "", false
+	}
+	defer delete(bytes)
+
+	ref: Tiled_Tileset_Ref
+	if json.unmarshal(bytes, &ref) != nil {
+		return "", false
+	}
+	defer delete(ref.tilesets)
+
+	//only supporting one tileset for now.
+	if len(ref.tilesets) != 1 {
+		for ts in ref.tilesets {
+			delete(ts.image)
+		}
+		return "", false
+	}
+
+	return ref.tilesets[0].image, true
+}
+
+tiled_map_destroy :: proc(tiled: ^Tiled_Map) {
+	delete(tiled.orientation)
+	for layer in tiled.layers {
+		delete(layer.type)
+		delete(layer.name)
+		delete(layer.encoding)
+		delete(layer.data)
+	}
+	delete(tiled.layers)
+
+	for ts in tiled.tilesets {
+		delete(ts.image)
+		for tile in ts.tiles {
+			for prop in tile.properties {
+				delete(prop.name)
+				delete(prop.type)
+				json.destroy_value(prop.value)
+			}
+			delete(tile.properties)
+		}
+		delete(ts.tiles)
+	}
+	delete(tiled.tilesets)
 }
 
