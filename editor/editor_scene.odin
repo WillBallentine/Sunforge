@@ -29,16 +29,17 @@ Panel_Layout :: struct {
 }
 
 Editor_State :: struct {
-	project_root:   string,
-	project:        proj.Project_Data,
-	asset_browser:  Asset_Browser_State,
-	edit_camera:    eng.Camera_State,
-	world_target:   eng.Render_Target,
-	current_scene:  Scene_Data,
-	history:        Editor_History,
-	textures:       map[string]rl.Texture2D,
-	scene_tilemap:  eng.Tilemap,
-	entity_sprites: []eng.Sprite,
+	project_root:     string,
+	project:          proj.Project_Data,
+	asset_browser:    Asset_Browser_State,
+	edit_camera:      eng.Camera_State,
+	world_target:     eng.Render_Target,
+	current_scene:    Scene_Data,
+	history:          Editor_History,
+	textures:         map[string]rl.Texture2D,
+	scene_tilemap:    eng.Tilemap,
+	entity_sprites:   []eng.Sprite,
+	new_scene_dialog: New_Scene_Dialog_State,
 }
 
 act :: #force_inline proc(a: Editor_Action) -> eng.Action_ID {
@@ -74,6 +75,7 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s.world_target = eng.make_render_target(&e.renderer)
 	s.asset_browser = asset_browser_init(s.project_root)
 	s.textures = make(map[string]rl.Texture2D)
+	s.new_scene_dialog = new_scene_dialog_init()
 
 	scene_path, _ := filepath.join({s.project_root, proj.SCENES_DIR, "level_01.json"})
 	defer delete(scene_path)
@@ -89,6 +91,26 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s.edit_camera.camera.target = {
 		f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w) / 2,
 		f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h) / 2,
+	}
+
+	s.current_scene = Scene_Data{}
+	if s.project.entry_scene != "" {
+		scene_path, _ := filepath.join({s.project_root, proj.SCENES_DIR, s.project.entry_scene})
+		defer delete(scene_path)
+
+		if loaded, ok := scene_load(scene_path); ok {
+			s.current_scene = loaded
+		}
+	}
+
+	if s.current_scene.tilemap_path != "" {
+		scene_load_resources(s)
+		s.edit_camera.camera.target = {
+			f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w) / 2,
+			f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h) / 2,
+		}
+	} else {
+		s.new_scene_dialog.open = true
 	}
 
 	eng.input_bind_keyboard(&e.input, act(.Undo), .Z)
@@ -162,7 +184,6 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.end_camera()
 	eng.end_render_target()
 
-	//TODO: need to create a panel aware blit proc in the engine
 	rl.DrawTexturePro(
 		s.world_target.texture,
 		{0, 0, f32(s.world_target.texture.width), -f32(s.world_target.texture.height)},
@@ -174,8 +195,27 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 
 	ui.ui_panel(panels.left, "Palette")
 	ui.ui_panel(panels.right, "Inspector")
+	inspector := ui.ui_panel(panels.right, "Inspector")
+	if ui.ui_button(
+		{
+			inspector.x + ui.PADDING,
+			inspector.y + ui.PADDING,
+			inspector.width - ui.PADDING * 2,
+			ui.ROW_HEIGHT,
+		},
+		"New Scene",
+	) {
+		s.new_scene_dialog.open = true
+	}
+
 	assets_rect := ui.ui_panel(panels.bottom, "Assets")
 	asset_browser_render(&s.asset_browser, assets_rect, e.input.mouse.wheel)
+
+	if new_scene_dialog_render(s) {
+		if create_new_scene(s) {
+			s.new_scene_dialog.open = false
+		}
+	}
 }
 
 editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
@@ -190,6 +230,7 @@ editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 		rl.UnloadTexture(tex)
 	}
 	delete(s.textures)
+	new_scene_dialog_destroy(&s.new_scene_dialog)
 	free(data)
 }
 
