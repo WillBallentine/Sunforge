@@ -29,13 +29,16 @@ Panel_Layout :: struct {
 }
 
 Editor_State :: struct {
-	project_root:  string,
-	project:       proj.Project_Data,
-	asset_browser: Asset_Browser_State,
-	edit_camera:   eng.Camera_State,
-	world_target:  eng.Render_Target,
-	current_scene: Scene_Data,
-	history:       Editor_History,
+	project_root:   string,
+	project:        proj.Project_Data,
+	asset_browser:  Asset_Browser_State,
+	edit_camera:    eng.Camera_State,
+	world_target:   eng.Render_Target,
+	current_scene:  Scene_Data,
+	history:        Editor_History,
+	textures:       map[string]rl.Texture2D,
+	scene_tilemap:  eng.Tilemap,
+	entity_sprites: []eng.Sprite,
 }
 
 act :: #force_inline proc(a: Editor_Action) -> eng.Action_ID {
@@ -70,6 +73,7 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 
 	s.world_target = eng.make_render_target(&e.renderer)
 	s.asset_browser = asset_browser_init(s.project_root)
+	s.textures = make(map[string]rl.Texture2D)
 
 	scene_path, _ := filepath.join({s.project_root, proj.SCENES_DIR, "level_01.json"})
 	defer delete(scene_path)
@@ -79,6 +83,12 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 	} else {
 		s.current_scene = default_title_scene()
 		scene_save(scene_path, s.current_scene)
+	}
+
+	scene_load_resources(s)
+	s.edit_camera.camera.target = {
+		f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w) / 2,
+		f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h) / 2,
 	}
 
 	eng.input_bind_keyboard(&e.input, act(.Undo), .Z)
@@ -132,9 +142,27 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.begin_render_target(s.world_target)
 	eng.renderer_clear(rl.Color{40, 40, 45, 255})
 	eng.begin_camera(s.edit_camera)
+	eng.draw_tilemap(&s.scene_tilemap, s.edit_camera.camera)
+	for entity, i in s.current_scene.entities {
+		eng.draw_buffer_push(
+			&e.renderer.draw_buffer,
+			eng.Draw_Command {
+				sprite = s.entity_sprites[i],
+				position = entity.position,
+				scale = 1,
+				rotation = 0,
+				pivot_point = .CENTER,
+				flip = .NONE,
+				tint = rl.WHITE,
+				z = 0,
+			},
+		)
+	}
+	eng.draw_buffer_flush(&e.renderer.draw_buffer)
 	eng.end_camera()
 	eng.end_render_target()
 
+	//TODO: need to create a panel aware blit proc in the engine
 	rl.DrawTexturePro(
 		s.world_target.texture,
 		{0, 0, f32(s.world_target.texture.width), -f32(s.world_target.texture.height)},
@@ -143,8 +171,6 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		0,
 		rl.WHITE,
 	)
-
-	eng.blit(&e.renderer, s.world_target)
 
 	ui.ui_panel(panels.left, "Palette")
 	ui.ui_panel(panels.right, "Inspector")
@@ -157,6 +183,13 @@ editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.destroy_render_target(s.world_target)
 	asset_browser_destroy(&s.asset_browser)
 	history_destroy(&s.history)
+	eng.destroy_tilemap(&s.scene_tilemap)
+	delete(s.entity_sprites)
+	for key, tex in s.textures {
+		delete(key)
+		rl.UnloadTexture(tex)
+	}
+	delete(s.textures)
 	free(data)
 }
 
@@ -173,6 +206,45 @@ compute_panel_layout :: proc() -> Panel_Layout {
 			sw - PANEL_LEFT_WIDTH - PANEL_RIGHT_WIDTH,
 			sh - PANEL_BOTTOM_HEIGHT,
 		},
+	}
+}
+
+scene_texture :: proc(s: ^Editor_State, path: string) -> rl.Texture2D {
+	if tex, ok := s.textures[path]; ok {
+		return tex
+	}
+	cpath := strings.clone_to_cstring(path, context.temp_allocator)
+	tex := rl.LoadTexture(cpath)
+	s.textures[strings.clone(path)] = tex
+	return tex
+}
+
+scene_load_resources :: proc(s: ^Editor_State) {
+	tilemap_abs, _ := filepath.join({s.project_root, s.current_scene.tilemap_path})
+	defer delete(tilemap_abs)
+
+	tileset_tex: rl.Texture2D
+	if image_rel, ok := eng.tiled_get_tileset_image(tilemap_abs); ok {
+		defer delete(image_rel)
+		tileset_dir := filepath.dir(tilemap_abs)
+		joined, _ := filepath.join({tileset_dir, image_rel})
+		defer delete(joined)
+		tileset_abs, _ := filepath.clean(joined)
+		defer delete(tileset_abs)
+		tileset_tex = scene_texture(s, tileset_abs)
+	}
+
+	s.scene_tilemap, _ = eng.tilemap_load_tiled(tilemap_abs, tileset_tex)
+
+	s.entity_sprites = make([]eng.Sprite, len(s.current_scene.entities))
+	for entity, i in s.current_scene.entities {
+		sprite_abs, _ := filepath.join({s.project_root, entity.sprite_sheet_path})
+		defer delete(sprite_abs)
+		tex := scene_texture(s, sprite_abs)
+		s.entity_sprites[i] = eng.Sprite {
+			texture = tex,
+			src     = {0, 0, f32(tex.width), f32(tex.height)},
+		}
 	}
 }
 

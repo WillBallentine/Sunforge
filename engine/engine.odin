@@ -61,6 +61,8 @@ tilemap_set_tile :: rend.tilemap_set_tile
 draw_tilemap :: rend.tilemap_draw
 tilemap_is_solid :: rend.tilemap_is_solid
 destroy_tilemap :: rend.tilemap_destroy
+tilemap_load_tiled :: rend.tilemap_load_tiled
+tiled_get_tileset_image :: rend.tiled_get_tileset_image
 //particle
 Particle_System :: rend.Particle_System
 Particle_Config :: rend.Particle_Config
