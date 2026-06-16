@@ -12,34 +12,41 @@ Sunforge is a 2D game engine written in [Odin](https://odin-lang.org/) on top of
 
 Sunforge is **pre-v1** and under active development. APIs are unstable and may change without notice. See [Roadmap](#roadmap) for what's planned, and [CONTRIBUTING.md](CONTRIBUTING.md) if you'd like to help.
 
-**NOTE**: the visuals of the app are not final. I am currently in the "get it working" pass of the engine and visuals will come in a beautification pass later in development
+**NOTE**: the visuals of the app are not final. I am currently in the "get it working" pass of the engine and visuals will come in a beautification pass later in development.
 
 ## Current Features
 
 ### Project System (`project/`)
-- **Project System**: a portable project layout (project.json + resources/ + scenes/) independent of the Sunforge source tree. Project_Data (name, entry scene, window config, icon path) is created/loaded/saved via project_create/project_open/project_save; project_apply_icon applies a project's window icon via rl.LoadImage/rl.SetWindowIcon.
+- **Project System**: a portable project layout (project.json + resources/ + scenes/) independent of the Sunforge source tree. `Project_Data` (name, entry scene, window config, icon path) is created/loaded/saved via `project_create`/`project_open`/`project_save`; `project_apply_icon` applies a project's window icon via `rl.LoadImage`/`rl.SetWindowIcon`.
 
 ### Editor (`editor/`)
-- **Editor**: a separate executable (editor/) for creating and opening Sunforge projects. Project setup is a GUI project selector/creator, with a recently-opened-projects list persisted to recent_projects.json next to the executable. Once a project loads, the editor opens into the editor view with an independent free-fly edit camera (right/middle-mouse drag to pan, scroll wheel to zoom), an empty world viewport rendered via the render-target/blit pipeline, and a resize-aware three-panel layout (Palette, Inspector, Assets) built on a custom immediate-mode UI toolkit (editor/ui/).
+- **Editor shell**: a separate executable for creating and opening Sunforge projects. Project setup uses a GUI project selector/creator with a recently-opened-projects list persisted to `recent_projects.json` next to the executable. Once a project loads, the editor opens into the editor view with an independent free-fly edit camera (right/middle-mouse drag to pan, scroll wheel to zoom), a world viewport rendered via the render-target/blit pipeline, and a resize-aware three-panel layout (Palette, Inspector, Assets) built on a custom immediate-mode UI toolkit (`editor/ui/`).
+- **New Scene dialog**: create a new scene by entering a name and grid dimensions (width x height in tiles); generates a blank Tiled-format JSON tilemap and saves it into the project's `scenes/` directory, then loads it immediately into the editor.
+- **Scene Browser**: lists all `.json` scene files in the project's `scenes/` directory, allows switching the active scene from within the editor, and supports renaming scene files. The active entry scene is persisted back to `project.json` on selection.
+- **Tilemap Painter**: left-click to paint tiles onto the tilemap, left-click drag for continuous strokes. A scrollable tile palette in the left panel shows all tiles from the active tileset (scaled to fixed thumbnails); clicking a tile selects it. An Erase toggle replaces the selected tile with an empty cell (-1). Painting is applied live during drag; on mouse release the full stroke is committed to the undo/redo history and auto-saved to disk.
+- **Undo/redo history**: `Ctrl+Z` / `Ctrl+Y` step through a command stack (`Editor_History`). Commands are data-driven (`do_fn` / `undo_fn` / `data`) so any editor operation can be made undoable. Currently wired for tile stroke operations (`Tile_Stroke_Data`, up to 256 cells per stroke).
+- **Tilemap auto-save**: after every completed paint stroke, the tilemap is written to its `.json` file on disk in Tiled format (width, height, tilewidth, tileheight, layers with tile data arrays, tilesets block).
+- **Tilemap boundary indicator**: a white rectangle is drawn in world space at the tilemap's exact pixel extents so you always know where the drawable area ends. Line thickness compensates for camera zoom to stay visually consistent.
+- **Asset browser**: finds all files within the project's `resources/` folder and presents them as a selectable list. Texture files show thumbnails; all assets are sortable by type.
 
 ### Core (`engine/core`)
 - **Window**: configurable size/title/target FPS, fullscreen toggle, and runtime resize handling for resizeable windows
 - **Clock**: delta-time tracking with a frame-time cap to avoid large time steps after a stall
 - **Input**: keyboard and gamepad action bindings, pressed/held/released state tracking, and mouse position/delta/wheel/button state
-- **Math**: small `Vec2`/`Rect` types and `lerp`/`clamp`/`vec2_*`/`rect_contains` helpers. `lerp` drives particle color/size gradient interpolation; `Vec2`/`Rect` are early utilities pending consolidation with `rl.Vector2`/`rl.Rectangle` that will be enhanced in future updates
+- **Math**: small `Vec2`/`Rect` types and `lerp`/`clamp`/`vec2_*`/`rect_contains` helpers
 
 ### Renderer (`engine/renderer`)
 - **Render targets**: offscreen targets for compositing layers (e.g. world + UI), blitted together each frame
 - **Basic shapes**: rectangle (outline), circle, and line drawing primitives
 - **Fonts**: TrueType font loading (`rl.LoadFontEx`) through an ID-based registry (`Font_ID`), with load/unload lifecycle tied into the renderer's init/shutdown, plus text drawing and measurement (`draw_font` / `measure_font`)
 - **Sprites**: sprite-sheet slicing (grid and row layouts) with horizontal/vertical flipping
-- **Animation**: frame-based playback with configurable FPS, looping, pause/resume, and per-frame event tags for triggering gameplay logic (e.g. a landing effect on a specific frame)
+- **Animation**: frame-based playback with configurable FPS, looping, pause/resume, and per-frame event tags for triggering gameplay logic
 - **Camera**: smooth follow, trauma-based screen shake, and world/screen coordinate conversion
 - **Shaders**: fragment shader loading, uniform setters (float, vec2, texture), and a post-processing blit path
-- **Tilemap**: multi-layer tile grids with viewport-culled rendering and a per-tile collision layer
+- **Tilemap**: multi-layer tile grids with viewport-culled rendering, a per-tile collision layer, `tilemap_load_tiled`/`tilemap_save_tiled` for reading and writing Tiled-format JSON, and `ts_tilecount` tracking the number of tiles in the active tileset
 - **Particles**: fixed 1024-particle pool with configurable velocity range, color gradient, size gradient, lifetime, and gravity per burst
-- **Draw order / z-sorting**: a per-frame draw command buffer ('Draw_Buffer', up to 2048 commands). 'draw_buffer_push' queues a 'Draw_Command'; 'draw_buffer_flush' sorts the queue back-to-front by a 'z' key using insertion sort (cheap for nearly-sorted per-frame data), draws each via `renderer_draw_sprite`, then resets the buffer, so depth ordering "just works" without manual call order
-- **Sprite rotation & pivot**: `renderer_draw_sprite` supports rotation (degrees, clockwise) and a `Pivot_Point` (`CENTER` or `BOTTOM`) controlling the rotation and scale origin (this will be enhanced in future updates)
+- **Draw order / z-sorting**: a per-frame draw command buffer (`Draw_Buffer`, up to 2048 commands). `draw_buffer_push` queues a `Draw_Command`; `draw_buffer_flush` sorts back-to-front by `z` using insertion sort, draws each, then resets the buffer
+- **Sprite rotation & pivot**: `renderer_draw_sprite` supports rotation (degrees, clockwise) and a `Pivot_Point` (`CENTER` or `BOTTOM`) controlling the rotation and scale origin
 
 ### Example
 [main.odin](main.odin) ties these systems together in one scene: a tilemap-based level, a player character with idle/walk/jump-flip animations (landing triggers a particle burst via a frame event) pushed through the z-sorted draw buffer with rotation and pivot, jump particle effects, camera follow with shake on jump, a font-rendered title, and a debug overlay of live input state rendered with a second font.
@@ -52,8 +59,8 @@ These packages exist as stubs and are planned for upcoming tiers (see [Roadmap](
 - `engine/physics`: collision/physics world
 - `engine/audio`: sound and music playback
 - `engine/assets`: asset caching and hot-reload
-- `engine/ui`: immediate-mode UI system for in-game UI (separate from the editor-only `editor/ui` toolkit, which now exists)
-- Editor panel content: (just added) asset browser, scene/tilemap editors, entity inspector (scene and inspector panels currently render as empty placeholders)
+- `engine/ui`: immediate-mode UI system for in-game UI (separate from the editor-only `editor/ui` toolkit)
+- Editor: entity placement, entity inspector panel, particle editor, animation editor, play-in-editor
 - Entity/scene management, timers, events, save system, scripting, and more
 
 ## Getting Started
@@ -80,12 +87,18 @@ engine/
   editor/
     main.odin                   editor entry point (project picker)
     editor_scene.odin           editor shell: edit camera, world viewport, panel layout
-    project_picker_scene.odin   initial screen for the editor allowing the user to select/create projects
-    recent_projects.odin        recently opened project
-    folder_picker_windows.odin  ask the user for a folder
-    asset_browser.odin          populates asset panel with selectable assets located in the project resources dir with thumbnails for textures
+    tilemap_painter.odin        tile palette, paint/erase strokes, auto-save
+    tile_commands.odin          Tile_Cell_Edit, Tile_Stroke_Data, make_tile_stroke_command
+    editor_history.odin         Editor_History, Editor_Command, undo/redo stack
+    new_scene_dialog.odin       New Scene dialog: name + grid dims -> Tiled JSON tilemap
+    scene_browser_dialog.odin   Scene Browser: list/switch/rename .json scenes
+    scene_data.odin             Scene_Data (tilemap_path, entities, camera), scene_load/save
+    project_picker_scene.odin   initial screen for selecting/creating projects
+    recent_projects.odin        recently opened projects list
+    folder_picker_windows.odin  Windows folder picker dialog
+    asset_browser.odin          asset panel with texture thumbnails, type sorting
     build_editor.bat
-    ui/                         immediate-mode UI toolkit for editor panels (buttons, sliders, color pickers, etc)
+    ui/                         immediate-mode UI toolkit (buttons, sliders, color pickers, etc.)
   core/                         window, clock, input, math (foundation)
   renderer/                     rendering, camera, sprites, animation, tilemap, particles, shaders, fonts
   physics/                      (stub, planned)
@@ -93,7 +106,7 @@ engine/
   assets/                       (stub, planned)
   ui/                           (stub, planned)
   engine.odin                   unified public API re-exporting the packages above
-main.odin                       example game/scene (soon to become a Sunforge project once the editor is more complete)
+main.odin                       example game/scene
 resources/                      textures, tilesets, shaders, fonts
 ```
 

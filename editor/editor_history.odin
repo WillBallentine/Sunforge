@@ -53,5 +53,7 @@ history_destroy :: proc(h: ^Editor_History) {
 
 	delete(h.undo_stack)
 	delete(h.redo_stack)
+	h.undo_stack = nil
+	h.redo_stack = nil
 }
 
