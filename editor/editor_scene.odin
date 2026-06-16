@@ -29,17 +29,18 @@ Panel_Layout :: struct {
 }
 
 Editor_State :: struct {
-	project_root:     string,
-	project:          proj.Project_Data,
-	asset_browser:    Asset_Browser_State,
-	edit_camera:      eng.Camera_State,
-	world_target:     eng.Render_Target,
-	current_scene:    Scene_Data,
-	history:          Editor_History,
-	textures:         map[string]rl.Texture2D,
-	scene_tilemap:    eng.Tilemap,
-	entity_sprites:   []eng.Sprite,
-	new_scene_dialog: New_Scene_Dialog_State,
+	project_root:        string,
+	project:             proj.Project_Data,
+	asset_browser:       Asset_Browser_State,
+	edit_camera:         eng.Camera_State,
+	world_target:        eng.Render_Target,
+	current_scene:       Scene_Data,
+	history:             Editor_History,
+	textures:            map[string]rl.Texture2D,
+	scene_tilemap:       eng.Tilemap,
+	entity_sprites:      []eng.Sprite,
+	new_scene_dialog:    New_Scene_Dialog_State,
+	browse_scene_dialog: Browse_Scenes_Dialog_State,
 }
 
 act :: #force_inline proc(a: Editor_Action) -> eng.Action_ID {
@@ -76,6 +77,7 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s.asset_browser = asset_browser_init(s.project_root)
 	s.textures = make(map[string]rl.Texture2D)
 	s.new_scene_dialog = new_scene_dialog_init()
+	s.browse_scene_dialog = browse_scenes_dialog_init()
 
 	scene_path, _ := filepath.join({s.project_root, proj.SCENES_DIR, "level_01.json"})
 	defer delete(scene_path)
@@ -207,6 +209,18 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	) {
 		s.new_scene_dialog.open = true
 	}
+	if ui.ui_button(
+		{
+			inspector.x + ui.PADDING,
+			inspector.y + ui.PADDING + ui.ROW_HEIGHT,
+			inspector.width - ui.PADDING * 2,
+			ui.ROW_HEIGHT,
+		},
+		"Select Scene",
+	) {
+		s.browse_scene_dialog.open = true
+		browse_scenes_dialog_refresh(&s.browse_scene_dialog, s)
+	}
 
 	assets_rect := ui.ui_panel(panels.bottom, "Assets")
 	asset_browser_render(&s.asset_browser, assets_rect, e.input.mouse.wheel)
@@ -214,6 +228,12 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	if new_scene_dialog_render(s) {
 		if create_new_scene(s) {
 			s.new_scene_dialog.open = false
+		}
+	}
+
+	if browse_scene_dialog_render(s) {
+		if select_scene(s) {
+			s.browse_scene_dialog.open = false
 		}
 	}
 }
@@ -231,6 +251,7 @@ editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 	delete(s.textures)
 	new_scene_dialog_destroy(&s.new_scene_dialog)
+	browse_scene_dialog_destroy(&s.browse_scene_dialog)
 	free(data)
 }
 
