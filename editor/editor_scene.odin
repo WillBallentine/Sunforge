@@ -41,6 +41,7 @@ Editor_State :: struct {
 	entity_sprites:      []eng.Sprite,
 	new_scene_dialog:    New_Scene_Dialog_State,
 	browse_scene_dialog: Browse_Scenes_Dialog_State,
+	tilemap_painter:     Tilemap_Painter_State,
 }
 
 act :: #force_inline proc(a: Editor_Action) -> eng.Action_ID {
@@ -78,6 +79,7 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s.textures = make(map[string]rl.Texture2D)
 	s.new_scene_dialog = new_scene_dialog_init()
 	s.browse_scene_dialog = browse_scenes_dialog_init()
+	s.tilemap_painter = tilemap_painter_init()
 
 	scene_path, _ := filepath.join({s.project_root, proj.SCENES_DIR, "level_01.json"})
 	defer delete(scene_path)
@@ -90,6 +92,7 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 
 	scene_load_resources(s)
+	tilemap_painter_on_scene_loaded(&s.tilemap_painter, s)
 	s.edit_camera.camera.target = {
 		f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w) / 2,
 		f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h) / 2,
@@ -107,6 +110,7 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 
 	if s.current_scene.tilemap_path != "" {
 		scene_load_resources(s)
+		tilemap_painter_on_scene_loaded(&s.tilemap_painter, s)
 		s.edit_camera.camera.target = {
 			f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w) / 2,
 			f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h) / 2,
@@ -128,7 +132,8 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	}
 
 	if e.input.mouse.wheel != 0 &&
-	   !rl.CheckCollisionPointRec(e.input.mouse.position, panels.bottom) {
+	   !rl.CheckCollisionPointRec(e.input.mouse.position, panels.bottom) &&
+	   !rl.CheckCollisionPointRec(e.input.mouse.position, panels.left) {
 		s.edit_camera.camera.zoom += e.input.mouse.wheel * EDIT_ZOOM_SPEED
 		s.edit_camera.camera.zoom = engCore.clamp(
 			s.edit_camera.camera.zoom,
@@ -144,6 +149,7 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	if ctrl_down && eng.input_pressed(&e.input, act(.Redo)) {
 		history_redo(&s.history)
 	}
+	tilemap_painter_update(&s.tilemap_painter, s, e, panels)
 
 	ui.ui_begin(&e.input)
 }
@@ -183,6 +189,12 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		)
 	}
 	eng.draw_buffer_flush(&e.renderer.draw_buffer)
+	if s.scene_tilemap.cols > 0 {
+		w := f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w)
+		h := f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h)
+		thickness := 2 / s.edit_camera.camera.zoom
+		rl.DrawRectangleLinesEx({0, 0, w, h}, thickness, rl.Color{255, 255, 255, 60})
+	}
 	eng.end_camera()
 	eng.end_render_target()
 
@@ -195,7 +207,13 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		rl.WHITE,
 	)
 
-	ui.ui_panel(panels.left, "Palette")
+	palette_rect := ui.ui_panel(panels.left, "Palette")
+	tilemap_painter_render_palette(
+		&s.tilemap_painter,
+		&s.scene_tilemap,
+		palette_rect,
+		e.input.mouse.wheel,
+	)
 	ui.ui_panel(panels.right, "Inspector")
 	inspector := ui.ui_panel(panels.right, "Inspector")
 	if ui.ui_button(
@@ -240,6 +258,7 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 
 editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Editor_State)data
+	tilemap_save(s)
 	eng.destroy_render_target(s.world_target)
 	asset_browser_destroy(&s.asset_browser)
 	history_destroy(&s.history)
@@ -252,6 +271,7 @@ editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	delete(s.textures)
 	new_scene_dialog_destroy(&s.new_scene_dialog)
 	browse_scene_dialog_destroy(&s.browse_scene_dialog)
+	tilemap_painter_destroy(&s.tilemap_painter)
 	free(data)
 }
 
