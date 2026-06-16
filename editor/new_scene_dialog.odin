@@ -185,6 +185,7 @@ create_new_scene :: proc(s: ^Editor_State) -> bool {
 
 	s.current_scene = loaded
 	scene_load_resources(s)
+	tilemap_painter_on_scene_loaded(&s.tilemap_painter, s)
 	s.edit_camera.camera.target = {
 		f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w) / 2,
 		f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h) / 2,
@@ -193,6 +194,7 @@ create_new_scene :: proc(s: ^Editor_State) -> bool {
 	delete(s.project.entry_scene)
 	s.project.entry_scene = strings.clone(scene_filename)
 	proj.project_save(s.project_root, s.project)
+	history_destroy(&s.history)
 
 	return true
 }
@@ -209,7 +211,7 @@ tilemap_create_empty_tiled_json :: proc(
 	b: strings.Builder
 	strings.builder_init(&b)
 
-	strings.write_string(&b, "\n")
+	strings.write_string(&b, "{\n")
 	fmt.sbprintf(&b, "  \"width\": %d,\n", cols)
 	fmt.sbprintf(&b, "  \"height\": %d,\n", rows)
 	fmt.sbprintf(&b, "  \"tilewidth\": %d,\n", tile_w)

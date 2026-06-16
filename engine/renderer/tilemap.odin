@@ -1,22 +1,25 @@
 package renderer
 
 import "core:encoding/json"
+import "core:fmt"
 import "core:os"
+import "core:strings"
 import rl "vendor:raylib"
 
 MAX_TILE_LAYERS :: 4
 TILED_FLIP_MASK :: u32(0xE0000000)
 
 Tilemap :: struct {
-	tiles:      [][]i32,
-	cols:       i32,
-	rows:       i32,
-	tile_w:     i32,
-	tile_h:     i32,
-	layers:     i32,
-	solid:      []bool,
-	tileset:    rl.Texture2D,
-	ts_columns: i32,
+	tiles:        [][]i32,
+	cols:         i32,
+	rows:         i32,
+	tile_w:       i32,
+	tile_h:       i32,
+	layers:       i32,
+	solid:        []bool,
+	tileset:      rl.Texture2D,
+	ts_columns:   i32,
+	ts_tilecount: i32,
 }
 
 Tiled_Property :: struct {
@@ -78,6 +81,7 @@ tilemap_create :: proc(
 	tm.layers = layers
 	tm.tileset = tileset
 	tm.ts_columns = ts_columns
+	tm.ts_tilecount = ts_columns * (tileset.height / tile_h)
 
 	tm.tiles = make([][]i32, layers)
 	for i in 0 ..< layers {
@@ -156,6 +160,64 @@ tilemap_destroy :: proc(tm: ^Tilemap) {
 	delete(tm.solid)
 }
 
+tilemap_save_tiled :: proc(path: string, tilemap: ^Tilemap, image_rel: string) -> bool {
+	b: strings.Builder
+	strings.builder_init(&b)
+	defer delete(b.buf)
+
+	strings.write_string(&b, "{\n")
+	fmt.sbprintf(&b, "  \"width\": %d,\n", tilemap.cols)
+	fmt.sbprintf(&b, "  \"height\": %d,\n", tilemap.rows)
+	fmt.sbprintf(&b, "  \"tilewidth\": %d,\n", tilemap.tile_w)
+	fmt.sbprintf(&b, "  \"tileheight\": %d,\n", tilemap.tile_h)
+	strings.write_string(&b, "  \"orientation\": \"orthogonal\",\n")
+	strings.write_string(&b, "  \"layers\": [\n")
+
+	for layer_i in 0 ..< tilemap.layers {
+		strings.write_string(&b, "    {\n")
+		strings.write_string(&b, "      \"type\": \"tilelayer\",\n")
+		fmt.sbprintf(&b, "      \"name\": \"layer_%d\",\n", layer_i)
+		strings.write_string(&b, "      \"data\": [\n")
+		count := tilemap.rows * tilemap.cols
+		for i in 0 ..< count {
+			tile := tilemap.tiles[layer_i][i]
+			gid: i32 = 0 if tile < 0 else tile + 1
+			if i < count - 1 {
+				fmt.sbprintf(&b, "        %d,\n", gid)
+			} else {
+				fmt.sbprintf(&b, "        %d\n", gid)
+			}
+		}
+		strings.write_string(&b, "      ]\n")
+		if layer_i < tilemap.layers - 1 {
+			strings.write_string(&b, "    },\n")
+		} else {
+			strings.write_string(&b, "    }\n")
+		}
+	}
+
+	strings.write_string(&b, "  ],\n")
+	strings.write_string(&b, "  \"tilesets\": [\n")
+	strings.write_string(&b, "    {\n")
+	fmt.sbprintf(&b, "      \"firstgid\": %d,\n", 1)
+	fmt.sbprintf(&b, "      \"image\": \"%s\",\n", image_rel)
+	fmt.sbprintf(&b, "      \"titlewidth\": %d,\n", tilemap.tile_w)
+	fmt.sbprintf(&b, "      \"titleheight\": %d,\n", tilemap.tile_h)
+	fmt.sbprintf(&b, "      \"columns\": %d,\n", tilemap.ts_columns)
+	fmt.sbprintf(
+		&b,
+		"      \"tilecount\": %d,\n",
+		tilemap.ts_columns * (tilemap.tileset.height / tilemap.tile_h),
+	)
+	strings.write_string(&b, "      \"tiles\": []\n")
+	strings.write_string(&b, "    }\n")
+	strings.write_string(&b, "  ]\n")
+	strings.write_string(&b, "}\n")
+
+	json_str := strings.to_string(b)
+	return os.write_entire_file(path, transmute([]byte)json_str) == nil
+}
+
 tilemap_load_tiled :: proc(path: string, tileset: rl.Texture2D) -> (Tilemap, bool) {
 	bytes, err := os.read_entire_file(path, context.allocator)
 	if err != nil {
@@ -210,6 +272,7 @@ tilemap_load_tiled :: proc(path: string, tileset: rl.Texture2D) -> (Tilemap, boo
 	tm.layers = i32(tile_layer_count)
 	tm.tileset = tileset
 	tm.ts_columns = ts.columns
+	tm.ts_tilecount = ts.tilecount
 
 	tm.tiles = make([][]i32, tm.layers)
 	for i in 0 ..< tile_layer_count {

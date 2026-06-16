@@ -203,6 +203,7 @@ select_scene :: proc(s: ^Editor_State) -> bool {
 
 	s.current_scene = loaded
 	scene_load_resources(s)
+	tilemap_painter_on_scene_loaded(&s.tilemap_painter, s)
 	s.edit_camera.camera.target = {
 		f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w) / 2,
 		f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h) / 2,
@@ -211,6 +212,8 @@ select_scene :: proc(s: ^Editor_State) -> bool {
 	delete(s.project.entry_scene)
 	s.project.entry_scene = strings.clone(scene_rel)
 	proj.project_save(s.project_root, s.project)
+
+	history_destroy(&s.history)
 
 	return true
 }
