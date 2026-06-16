@@ -13,7 +13,7 @@ ASSET_FILTER_HEIGHT :: 22
 ASSET_SCROLL_SPEED :: 20
 
 Asset_Browser_State :: struct {
-	entries:    []Asset_Entry,
+	assets:     []Asset_Entry,
 	thumbnails: map[string]rl.Texture2D,
 	scroll:     f32,
 	filter:     Asset_Kind,
@@ -46,12 +46,12 @@ asset_browser_init :: proc(project_root: string) -> Asset_Browser_State {
 	resources_root, _ := filepath.join({project_root, proj.RESOURCES_DIR})
 	defer delete(resources_root)
 
-	entries := make([dynamic]Asset_Entry, 0)
+	asset_entries := make([dynamic]Asset_Entry, 0)
 
-	walker := os.walker_create(resources_root)
-	defer os.walker_destroy(&walker)
+	resouce_walker := os.walker_create(resources_root)
+	defer os.walker_destroy(&resouce_walker)
 
-	for info in os.walker_walk(&walker) {
+	for info in os.walker_walk(&resouce_walker) {
 		if info.type != .Regular {
 			continue
 		}
@@ -62,7 +62,7 @@ asset_browser_init :: proc(project_root: string) -> Asset_Browser_State {
 		}
 
 		append(
-			&entries,
+			&asset_entries,
 			Asset_Entry {
 				name = strings.clone(filepath.base(info.fullpath)),
 				rel_path = rel,
@@ -72,7 +72,7 @@ asset_browser_init :: proc(project_root: string) -> Asset_Browser_State {
 		)
 	}
 
-	s.entries = entries[:]
+	s.assets = asset_entries[:]
 	return s
 }
 
@@ -107,8 +107,8 @@ asset_browser_render :: proc(s: ^Asset_Browser_State, rect: rl.Rectangle, wheel:
 		}
 	}
 
-	visible := make([dynamic]int, 0, len(s.entries), context.temp_allocator)
-	for entry, i in s.entries {
+	visible := make([dynamic]int, 0, len(s.assets), context.temp_allocator)
+	for entry, i in s.assets {
 		if s.filter != .ALL && entry.kind != s.filter {
 			continue
 		}
@@ -132,7 +132,7 @@ asset_browser_render :: proc(s: ^Asset_Browser_State, rect: rl.Rectangle, wheel:
 	)
 
 	for entry_index, row_i in visible {
-		entry := s.entries[entry_index]
+		entry := s.assets[entry_index]
 		row := rl.Rectangle {
 			list_rect.x,
 			list_rect.y + f32(row_i) * ASSET_ROW_HEIGHT - s.scroll,
@@ -196,13 +196,13 @@ asset_browser_destroy :: proc(s: ^Asset_Browser_State) {
 	}
 	delete(s.thumbnails)
 
-	for entry in s.entries {
+	for entry in s.assets {
 		delete(entry.name)
 		delete(entry.rel_path)
 		delete(entry.full_path)
 	}
 
-	delete(s.entries)
+	delete(s.assets)
 }
 
 
@@ -211,7 +211,7 @@ asset_classify :: proc(path: string) -> Asset_Kind {
 	switch ext {
 	case ".png", ".jpg", ".jpeg":
 		return .TEXTURE
-	case "json":
+	case ".json":
 		return .JSON
 	case ".glsl":
 		return .SHADER

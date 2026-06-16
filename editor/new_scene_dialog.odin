@@ -3,7 +3,6 @@ package main
 import eng "../engine"
 import proj "../project"
 import ui "./ui"
-import "core:encoding/json"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
@@ -74,18 +73,13 @@ new_scene_dialog_render :: proc(s: ^Editor_State) -> bool {
 	)
 	row += row_h + pad
 
-	tileset_paths := make([dynamic]string, 0, len(s.asset_browser.entries), context.temp_allocator)
-	for entry in s.asset_browser.entries {
+	tileset_paths := make([dynamic]string, 0, len(s.asset_browser.assets), context.temp_allocator)
+	for entry in s.asset_browser.assets {
 		if entry.kind != .TEXTURE do continue
 		append(&tileset_paths, entry.rel_path)
 	}
+	combo_rect := rl.Rectangle{body.x + pad, row, body.width - pad * 2, row_h}
 
-	ui.ui_combo(
-		{body.x + pad, row, body.width - pad * 2, row_h},
-		"Tileset",
-		tileset_paths[:],
-		&d.tileset_selected,
-	)
 	row += row_h + pad
 
 	cols_i := i32(d.cols + 0.5)
@@ -124,6 +118,8 @@ new_scene_dialog_render :: proc(s: ^Editor_State) -> bool {
 		)
 	}
 
+	ui.ui_combo(combo_rect, "Tileset", tileset_paths[:], &d.tileset_selected)
+
 	return created
 }
 
@@ -137,7 +133,7 @@ create_new_scene :: proc(s: ^Editor_State) -> bool {
 
 	tileset_rel := ""
 	i := 0
-	for entry in s.asset_browser.entries {
+	for entry in s.asset_browser.assets {
 		if entry.kind != .TEXTURE do continue
 		if i == d.tileset_selected {
 			tileset_rel = entry.rel_path
