@@ -212,7 +212,7 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	if ui.ui_button(
 		{
 			inspector.x + ui.PADDING,
-			inspector.y + ui.PADDING + ui.ROW_HEIGHT,
+			inspector.y + ui.PADDING + ui.ROW_HEIGHT + ui.PADDING,
 			inspector.width - ui.PADDING * 2,
 			ui.ROW_HEIGHT,
 		},

@@ -13,6 +13,7 @@ Browse_Scenes_Dialog_State :: struct {
 	open:           bool,
 	scene_selected: int,
 	scenes:         [dynamic]Asset_Entry,
+	name:           string,
 }
 
 browse_scenes_dialog_init :: proc() -> Browse_Scenes_Dialog_State {
@@ -20,6 +21,7 @@ browse_scenes_dialog_init :: proc() -> Browse_Scenes_Dialog_State {
 		open = false,
 		scene_selected = -1,
 		scenes = make([dynamic]Asset_Entry, 0),
+		name = strings.clone(""),
 	}
 }
 
@@ -82,6 +84,14 @@ browse_scene_dialog_render :: proc(s: ^Editor_State) -> bool {
 	btn_w := (body.width - pad * 3) / 2
 	select_rect := rl.Rectangle{body.x + pad, row, btn_w, row_h}
 	cancel_rect := rl.Rectangle{body.x + pad * 2 + btn_w, row, btn_w, row_h}
+	rename_rect := rl.Rectangle{body.x + pad, row + row_h + pad, body.width - pad * 2, row_h}
+	rename_input_rect := rl.Rectangle {
+		body.x + pad,
+		row + (row_h * 2) + pad * 2,
+		body.width - pad * 2,
+		row_h,
+	}
+	ui.ui_text_input(rename_input_rect, &d.name)
 
 	select := false
 	if ui.ui_button(select_rect, "Select") && can_select {
@@ -89,6 +99,9 @@ browse_scene_dialog_render :: proc(s: ^Editor_State) -> bool {
 	}
 	if ui.ui_button(cancel_rect, "Cancel") {
 		d.open = false
+	}
+	if ui.ui_button(rename_rect, "Rename") && can_select && d.name != "" {
+		rename_scene(s)
 	}
 
 	if len(scene_paths) == 0 {
@@ -138,6 +151,35 @@ walk_scene_dir :: proc(s: ^Editor_State) -> [dynamic]Asset_Entry {
 	return asset_entries
 }
 
+rename_scene :: proc(s: ^Editor_State) -> bool {
+	d := &s.browse_scene_dialog
+
+	if d.scene_selected < 0 || d.scene_selected >= len(d.scenes) {
+		return false
+	}
+
+	old_abs, _ := filepath.join(
+		{s.project_root, proj.SCENES_DIR, d.scenes[d.scene_selected].rel_path},
+	)
+	defer delete(old_abs)
+	new_name := fmt.tprintf("%s.json", d.name)
+	new_abs, _ := filepath.join({s.project_root, proj.SCENES_DIR, new_name})
+	defer delete(new_abs)
+	if os.rename(old_abs, new_abs) != nil {
+		return false
+	}
+
+	if s.project.entry_scene == d.scenes[d.scene_selected].rel_path {
+		delete(s.project.entry_scene)
+		s.project.entry_scene = strings.clone(new_name)
+		proj.project_save(s.project_root, s.project)
+	}
+
+	browse_scenes_dialog_refresh(d, s)
+
+	return true
+}
+
 select_scene :: proc(s: ^Editor_State) -> bool {
 	d := &s.browse_scene_dialog
 
@@ -174,6 +216,7 @@ select_scene :: proc(s: ^Editor_State) -> bool {
 }
 
 browse_scene_dialog_destroy :: proc(d: ^Browse_Scenes_Dialog_State) {
+	delete(d.name)
 	for entry in d.scenes {
 		delete(entry.name)
 		delete(entry.rel_path)
