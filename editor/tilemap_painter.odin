@@ -103,7 +103,7 @@ tilemap_painter_render_palette :: proc(
 		rl.DrawRectangleLinesEx(erase_btn, 2, ui.ACCENT)
 	}
 
-	tile_size: f32 = 32
+	tile_size: f32 = 48
 	tiles_per_row := max(i32(rect.width / tile_size), 1)
 	tile_count := tm.ts_tilecount
 	total_rows := (tile_count + tiles_per_row - 1) / tiles_per_row
