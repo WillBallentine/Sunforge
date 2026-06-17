@@ -1,7 +1,9 @@
 package main
 
+import proj "../project"
 import "core:encoding/json"
 import "core:os"
+import "core:path/filepath"
 import rl "vendor:raylib"
 
 Scene_Data :: struct {
@@ -32,6 +34,13 @@ scene_save :: proc(path: string, data: Scene_Data) -> bool {
 	defer delete(bytes)
 
 	return os.write_entire_file(path, bytes) == nil
+}
+
+scene_save_current :: proc(s: ^Editor_State) {
+	if s.project.entry_scene == "" do return
+	path, _ := filepath.join({s.project_root, proj.SCENES_DIR, s.project.entry_scene})
+	defer delete(path)
+	scene_save(path, s.current_scene)
 }
 
 scene_load :: proc(path: string) -> (Scene_Data, bool) {

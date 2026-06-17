@@ -6,6 +6,7 @@ import proj "../project"
 import ui "./ui"
 import "core:path/filepath"
 import "core:strings"
+import util "utils"
 import rl "vendor:raylib"
 
 PANEL_LEFT_WIDTH :: 220
@@ -41,7 +42,9 @@ Editor_State :: struct {
 	entity_sprites:      []eng.Sprite,
 	new_scene_dialog:    New_Scene_Dialog_State,
 	browse_scene_dialog: Browse_Scenes_Dialog_State,
+	active_tool:         util.Editor_Tools,
 	tilemap_painter:     Tilemap_Painter_State,
+	entity_placer:       Entity_Placement_State,
 }
 
 act :: #force_inline proc(a: Editor_Action) -> eng.Action_ID {
@@ -80,6 +83,7 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s.new_scene_dialog = new_scene_dialog_init()
 	s.browse_scene_dialog = browse_scenes_dialog_init()
 	s.tilemap_painter = tilemap_painter_init()
+	s.entity_placer = entity_placement_init()
 
 	scene_path, _ := filepath.join({s.project_root, proj.SCENES_DIR, "level_01.json"})
 	defer delete(scene_path)
@@ -189,6 +193,14 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		)
 	}
 	eng.draw_buffer_flush(&e.renderer.draw_buffer)
+	if s.active_tool == .Entity {
+		for entity, i in s.current_scene.entities {
+			gizmo := entity_gizmo_rect(entity.position)
+			color := ui.ACCENT if i == s.entity_placer.selected else rl.Color{180, 180, 255, 100}
+			rl.DrawRectangleLinesEx(gizmo, 1.5 / s.edit_camera.camera.zoom, color)
+			rl.DrawCircleV(entity.position, 3 / s.edit_camera.camera.zoom, color)
+		}
+	}
 	if s.scene_tilemap.cols > 0 {
 		w := f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w)
 		h := f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h)
@@ -214,15 +226,13 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		palette_rect,
 		e.input.mouse.wheel,
 	)
-	ui.ui_panel(panels.right, "Inspector")
+
 	inspector := ui.ui_panel(panels.right, "Inspector")
+	rw := inspector.width - ui.PADDING * 2
+	y := inspector.y + ui.PADDING
+	// TODO: eventually this should be a dropdown or toolbar of somekind
 	if ui.ui_button(
-		{
-			inspector.x + ui.PADDING,
-			inspector.y + ui.PADDING,
-			inspector.width - ui.PADDING * 2,
-			ui.ROW_HEIGHT,
-		},
+		{inspector.x + ui.PADDING, inspector.y + ui.PADDING, rw, ui.ROW_HEIGHT},
 		"New Scene",
 	) {
 		s.new_scene_dialog.open = true
@@ -231,13 +241,47 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		{
 			inspector.x + ui.PADDING,
 			inspector.y + ui.PADDING + ui.ROW_HEIGHT + ui.PADDING,
-			inspector.width - ui.PADDING * 2,
+			rw,
 			ui.ROW_HEIGHT,
 		},
 		"Select Scene",
 	) {
 		s.browse_scene_dialog.open = true
 		browse_scenes_dialog_refresh(&s.browse_scene_dialog, s)
+	}
+	if ui.ui_button(
+		{
+			inspector.x + ui.PADDING,
+			inspector.y + (ui.ROW_HEIGHT * 2) + (ui.PADDING * 3),
+			rw,
+			ui.ROW_HEIGHT,
+		},
+		"Tilemap Tool",
+	) {
+		s.active_tool = .Tilemap
+	}
+	if ui.ui_button(
+		{
+			inspector.x + ui.PADDING,
+			inspector.y + (ui.ROW_HEIGHT * 3) + (ui.PADDING * 4),
+			rw,
+			ui.ROW_HEIGHT,
+		},
+		"Entity Tool",
+	) {
+		s.active_tool = .Entity
+	}
+	y += ui.ROW_HEIGHT + ui.PADDING
+
+	if s.active_tool == .Entity &&
+	   s.entity_placer.selected >= 0 &&
+	   s.entity_placer.selected < len(s.current_scene.entities) {
+		entity := &s.current_scene.entities[s.entity_placer.selected]
+
+		rl.DrawText("Name", i32(inspector.x + ui.PADDING), i32(y), ui.FONT_SIZE, ui.TEXT)
+		y += ui.ROW_HEIGHT + ui.PADDING
+		ui.ui_text_input({inspector.x + ui.PADDING, y, rw, ui.ROW_HEIGHT}, &entity.name)
+		//TODO: pickup here
 	}
 
 	assets_rect := ui.ui_panel(panels.bottom, "Assets")
@@ -272,6 +316,7 @@ editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	new_scene_dialog_destroy(&s.new_scene_dialog)
 	browse_scene_dialog_destroy(&s.browse_scene_dialog)
 	tilemap_painter_destroy(&s.tilemap_painter)
+	entity_placement_destroy(&s.entity_placer)
 	free(data)
 }
 

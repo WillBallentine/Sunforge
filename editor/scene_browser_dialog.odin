@@ -214,6 +214,8 @@ select_scene :: proc(s: ^Editor_State) -> bool {
 	proj.project_save(s.project_root, s.project)
 
 	history_destroy(&s.history)
+	s.entity_placer.selected = -1
+	s.entity_placer.dragging = false
 
 	return true
 }

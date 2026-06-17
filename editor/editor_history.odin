@@ -1,9 +1,10 @@
 package main
 
 Editor_Command :: struct {
-	do_fn:   proc(_: rawptr),
-	undo_fn: proc(_: rawptr),
-	data:    rawptr,
+	do_fn:      proc(_: rawptr),
+	undo_fn:    proc(_: rawptr),
+	destroy_fn: proc(_: rawptr),
+	data:       rawptr,
 }
 
 Editor_History :: struct {
@@ -44,6 +45,7 @@ history_redo :: proc(h: ^Editor_History) {
 
 history_destroy :: proc(h: ^Editor_History) {
 	for c in h.undo_stack {
+		if c.destroy_fn != nil do c.destroy_fn(c.data)
 		free(c.data)
 	}
 
