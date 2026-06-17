@@ -147,6 +147,45 @@ tilemap_draw :: proc(tm: ^Tilemap, camera: rl.Camera2D) {
 	}
 }
 
+tilemap_draw_layer :: proc(tm: ^Tilemap, camera: rl.Camera2D, layer: i32) {
+	if layer < 0 || layer >= tm.layers do return
+	inv_zoom := 1.0 / camera.zoom
+	world_left := camera.target.x - camera.offset.x * inv_zoom
+	world_right := camera.target.x + camera.offset.x * inv_zoom
+	world_top := camera.target.y - camera.offset.y * inv_zoom
+	world_bottom := camera.target.y + camera.offset.y * inv_zoom
+
+	start_col := max(i32(0), i32(world_left / f32(tm.tile_w)) - 1)
+	end_col := min(tm.cols, i32(world_right / f32(tm.tile_w)) + 2)
+	start_row := max(i32(0), i32(world_top / f32(tm.tile_h)) - 1)
+	end_row := min(tm.rows, i32(world_bottom / f32(tm.tile_h)) + 2)
+
+	for row in start_row ..< end_row {
+		for col in start_col ..< end_col {
+			tile_idx := tm.tiles[layer][row * tm.cols + col]
+			if tile_idx < 0 do continue
+
+			ts_col := tile_idx % tm.ts_columns
+			ts_row := tile_idx / tm.ts_columns
+			src := rl.Rectangle {
+				f32(ts_col * tm.tile_w),
+				f32(ts_row * tm.tile_h),
+				f32(tm.tile_w),
+				f32(tm.tile_h),
+			}
+
+			dest := rl.Rectangle {
+				f32(col * tm.tile_w),
+				f32(row * tm.tile_h),
+				f32(tm.tile_w),
+				f32(tm.tile_h),
+			}
+
+			rl.DrawTexturePro(tm.tileset, src, dest, {0, 0}, 0, rl.WHITE)
+		}
+	}
+}
+
 tilemap_is_solid :: proc(tm: ^Tilemap, tile_index: i32) -> bool {
 	if tile_index < 0 || int(tile_index) >= len(tm.solid) do return false
 	return tm.solid[tile_index]

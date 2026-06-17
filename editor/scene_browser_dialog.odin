@@ -199,6 +199,7 @@ select_scene :: proc(s: ^Editor_State) -> bool {
 
 	eng.destroy_tilemap(&s.scene_tilemap)
 	delete(s.entity_sprites)
+	s.entity_sprites = nil
 	scene_destroy(&s.current_scene)
 
 	s.current_scene = loaded

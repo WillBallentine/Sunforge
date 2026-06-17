@@ -19,6 +19,8 @@ Entity_Data :: struct {
 	animation:         string,
 	tags:              []string,
 	properties:        map[string]string,
+	z:                 f32,
+	scale:             f32,
 }
 
 Camera_Config_Data :: struct {
