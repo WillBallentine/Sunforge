@@ -199,6 +199,7 @@ select_scene :: proc(s: ^Editor_State) -> bool {
 
 	eng.destroy_tilemap(&s.scene_tilemap)
 	delete(s.entity_sprites)
+	s.entity_sprites = nil
 	scene_destroy(&s.current_scene)
 
 	s.current_scene = loaded
@@ -214,6 +215,8 @@ select_scene :: proc(s: ^Editor_State) -> bool {
 	proj.project_save(s.project_root, s.project)
 
 	history_destroy(&s.history)
+	s.entity_placer.selected = -1
+	s.entity_placer.dragging = false
 
 	return true
 }

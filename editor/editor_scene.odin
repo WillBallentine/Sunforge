@@ -6,6 +6,7 @@ import proj "../project"
 import ui "./ui"
 import "core:path/filepath"
 import "core:strings"
+import util "utils"
 import rl "vendor:raylib"
 
 PANEL_LEFT_WIDTH :: 220
@@ -15,6 +16,8 @@ PANEL_BOTTOM_HEIGHT :: 180
 EDIT_ZOOM_SPEED :: 0.1
 EDIT_ZOOM_MIN :: 0.1
 EDIT_ZOOM_MAX :: 5.0
+
+ENTITY_LAYER :: i32(1)
 
 Editor_Action :: enum u32 {
 	Undo,
@@ -41,7 +44,9 @@ Editor_State :: struct {
 	entity_sprites:      []eng.Sprite,
 	new_scene_dialog:    New_Scene_Dialog_State,
 	browse_scene_dialog: Browse_Scenes_Dialog_State,
+	active_tool:         util.Editor_Tools,
 	tilemap_painter:     Tilemap_Painter_State,
+	entity_placer:       Entity_Placement_State,
 }
 
 act :: #force_inline proc(a: Editor_Action) -> eng.Action_ID {
@@ -80,6 +85,7 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s.new_scene_dialog = new_scene_dialog_init()
 	s.browse_scene_dialog = browse_scenes_dialog_init()
 	s.tilemap_painter = tilemap_painter_init()
+	s.entity_placer = entity_placement_init()
 
 	scene_path, _ := filepath.join({s.project_root, proj.SCENES_DIR, "level_01.json"})
 	defer delete(scene_path)
@@ -145,11 +151,14 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	ctrl_down := rl.IsKeyDown(.LEFT_CONTROL) || rl.IsKeyDown(.RIGHT_CONTROL)
 	if ctrl_down && eng.input_pressed(&e.input, act(.Undo)) {
 		history_undo(&s.history)
+		rebuild_entity_sprites(s)
 	}
 	if ctrl_down && eng.input_pressed(&e.input, act(.Redo)) {
 		history_redo(&s.history)
+		rebuild_entity_sprites(s)
 	}
 	tilemap_painter_update(&s.tilemap_painter, s, e, panels)
+	entity_placement_update(&s.entity_placer, s, e, panels)
 
 	ui.ui_begin(&e.input)
 }
@@ -172,23 +181,51 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.begin_render_target(s.world_target)
 	eng.renderer_clear(rl.Color{40, 40, 45, 255})
 	eng.begin_camera(s.edit_camera)
-	eng.draw_tilemap(&s.scene_tilemap, s.edit_camera.camera)
+
+	if s.active_tool != .Entity {
+		bg_end := min(ENTITY_LAYER, s.scene_tilemap.layers)
+		for layer in 0 ..< bg_end {
+			eng.draw_tilemap_layer(&s.scene_tilemap, s.edit_camera.camera, layer)
+		}
+	}
+
 	for entity, i in s.current_scene.entities {
+		entity_scale := entity.scale if entity.scale > 0 else 1.0
 		eng.draw_buffer_push(
 			&e.renderer.draw_buffer,
 			eng.Draw_Command {
 				sprite = s.entity_sprites[i],
 				position = entity.position,
-				scale = 1,
+				scale = entity_scale,
 				rotation = 0,
 				pivot_point = .CENTER,
 				flip = .NONE,
 				tint = rl.WHITE,
-				z = 0,
+				z = entity.z,
 			},
 		)
 	}
+
 	eng.draw_buffer_flush(&e.renderer.draw_buffer)
+
+	for layer in ENTITY_LAYER ..< s.scene_tilemap.layers {
+		eng.draw_tilemap_layer(&s.scene_tilemap, s.edit_camera.camera, layer)
+	}
+
+	if s.active_tool == .Entity {
+		t := 1.5 / s.edit_camera.camera.zoom
+		for entity, i in s.current_scene.entities {
+			pos := entity.position
+			half := ENTITY_GIZMO_HALF
+			color := ui.ACCENT if i == s.entity_placer.selected else rl.Color{180, 180, 255, 100}
+			rl.DrawLineEx({pos.x - half, pos.y}, {pos.x + half, pos.y}, t, color)
+			rl.DrawLineEx({pos.x, pos.y - half}, {pos.x, pos.y + half}, t, color)
+			if i == s.entity_placer.selected {
+				rl.DrawRectangleLinesEx(entity_gizmo_rect(pos), t * 2, ui.ACCENT)
+			}
+		}
+	}
+
 	if s.scene_tilemap.cols > 0 {
 		w := f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w)
 		h := f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h)
@@ -207,22 +244,25 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		rl.WHITE,
 	)
 
-	palette_rect := ui.ui_panel(panels.left, "Palette")
-	tilemap_painter_render_palette(
-		&s.tilemap_painter,
-		&s.scene_tilemap,
-		palette_rect,
-		e.input.mouse.wheel,
-	)
-	ui.ui_panel(panels.right, "Inspector")
+	if s.active_tool == .Entity {
+		entity_rect := ui.ui_panel(panels.left, "Entities")
+		entity_list_render(&s.entity_placer, &s.current_scene, entity_rect, e.input.mouse.wheel)
+	} else {
+		palette_rect := ui.ui_panel(panels.left, "Palette")
+		tilemap_painter_render_palette(
+			&s.tilemap_painter,
+			&s.scene_tilemap,
+			palette_rect,
+			e.input.mouse.wheel,
+		)
+	}
+
 	inspector := ui.ui_panel(panels.right, "Inspector")
+	rw := inspector.width - ui.PADDING * 2
+	y := inspector.y + ui.PADDING
+	// TODO: eventually this should be a dropdown or toolbar of somekind
 	if ui.ui_button(
-		{
-			inspector.x + ui.PADDING,
-			inspector.y + ui.PADDING,
-			inspector.width - ui.PADDING * 2,
-			ui.ROW_HEIGHT,
-		},
+		{inspector.x + ui.PADDING, inspector.y + ui.PADDING, rw, ui.ROW_HEIGHT},
 		"New Scene",
 	) {
 		s.new_scene_dialog.open = true
@@ -231,13 +271,92 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		{
 			inspector.x + ui.PADDING,
 			inspector.y + ui.PADDING + ui.ROW_HEIGHT + ui.PADDING,
-			inspector.width - ui.PADDING * 2,
+			rw,
 			ui.ROW_HEIGHT,
 		},
 		"Select Scene",
 	) {
 		s.browse_scene_dialog.open = true
 		browse_scenes_dialog_refresh(&s.browse_scene_dialog, s)
+	}
+	if ui.ui_button(
+		{
+			inspector.x + ui.PADDING,
+			inspector.y + (ui.ROW_HEIGHT * 2) + (ui.PADDING * 3),
+			rw,
+			ui.ROW_HEIGHT,
+		},
+		"Tilemap Tool",
+	) {
+		s.active_tool = .Tilemap
+	}
+	if ui.ui_button(
+		{
+			inspector.x + ui.PADDING,
+			inspector.y + (ui.ROW_HEIGHT * 3) + (ui.PADDING * 4),
+			rw,
+			ui.ROW_HEIGHT,
+		},
+		"Entity Tool",
+	) {
+		s.active_tool = .Entity
+	}
+	y += ui.ROW_HEIGHT + ui.PADDING
+
+	if s.active_tool == .Entity && s.entity_placer.selected >= 0 {
+		idx := s.entity_placer.selected
+
+		if idx < len(s.current_scene.entities) {
+			entity := &s.current_scene.entities[idx]
+			x := inspector.x + ui.PADDING
+			rw := inspector.width - ui.PADDING * 2
+			half := (rw - ui.PADDING) / 2
+			y := inspector.y + (ui.ROW_HEIGHT * 4) + (ui.PADDING * 5)
+
+			ui.ui_text_input({x, y, rw, ui.ROW_HEIGHT}, &entity.name)
+			y += ui.ROW_HEIGHT + ui.PADDING
+
+			ui.ui_drag_float({x, y, half, ui.ROW_HEIGHT}, "X", &entity.position.x, 1)
+			ui.ui_drag_float(
+				{x + half + ui.PADDING, y, half, ui.ROW_HEIGHT},
+				"Y",
+				&entity.position.y,
+				1,
+			)
+			y += ui.ROW_HEIGHT + ui.PADDING
+			ui.ui_drag_float({x, y, half, ui.ROW_HEIGHT}, "Z", &entity.z, 0.1)
+			ui.ui_drag_float(
+				{x + half + ui.PADDING, y, half, ui.ROW_HEIGHT},
+				"Scale",
+				&entity.scale,
+				0.01,
+			)
+			y += ui.ROW_HEIGHT + ui.PADDING
+
+			sp := entity.sprite_sheet_path if entity.sprite_sheet_path != "" else "(no sprite)"
+			rl.DrawText(
+				strings.clone_to_cstring(sp, context.temp_allocator),
+				i32(x),
+				i32(y) + 3,
+				ui.FONT_SIZE,
+				ui.TEXT,
+			)
+			y += ui.ROW_HEIGHT + ui.PADDING
+
+			if ui.ui_button({x, y, rw, ui.ROW_HEIGHT}, "Assign Sprite") {
+				sel := s.asset_browser.selected
+				if sel >= 0 && sel < len(s.asset_browser.assets) {
+					entry := s.asset_browser.assets[sel]
+					if entry.kind == .TEXTURE {
+						delete(entity.sprite_sheet_path)
+						full_rel, _ := filepath.join({proj.RESOURCES_DIR, entry.rel_path})
+						entity.sprite_sheet_path = full_rel
+						rebuild_entity_sprites(s)
+						scene_save_current(s)
+					}
+				}
+			}
+		}
 	}
 
 	assets_rect := ui.ui_panel(panels.bottom, "Assets")
@@ -272,6 +391,7 @@ editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	new_scene_dialog_destroy(&s.new_scene_dialog)
 	browse_scene_dialog_destroy(&s.browse_scene_dialog)
 	tilemap_painter_destroy(&s.tilemap_painter)
+	entity_placement_destroy(&s.entity_placer)
 	free(data)
 }
 
@@ -317,12 +437,23 @@ scene_load_resources :: proc(s: ^Editor_State) {
 	}
 
 	s.scene_tilemap, _ = eng.tilemap_load_tiled(tilemap_abs, tileset_tex)
+	eng.tilemap_ensure_layers(&s.scene_tilemap, 2)
 
+	rebuild_entity_sprites(s)
+}
+
+rebuild_entity_sprites :: proc(s: ^Editor_State) {
+	delete(s.entity_sprites)
+	s.entity_sprites = nil
 	s.entity_sprites = make([]eng.Sprite, len(s.current_scene.entities))
+
 	for entity, i in s.current_scene.entities {
 		sprite_abs, _ := filepath.join({s.project_root, entity.sprite_sheet_path})
 		defer delete(sprite_abs)
+
 		tex := scene_texture(s, sprite_abs)
+		if tex.id == 0 do continue
+
 		s.entity_sprites[i] = eng.Sprite {
 			texture = tex,
 			src     = {0, 0, f32(tex.width), f32(tex.height)},

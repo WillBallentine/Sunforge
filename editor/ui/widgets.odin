@@ -4,7 +4,6 @@ import engCore "../../engine/core"
 import "core:fmt"
 import rl "vendor:raylib"
 
-
 ui_panel :: proc(rect: rl.Rectangle, title: cstring) -> rl.Rectangle {
 	rl.DrawRectangleRec(rect, PANEL_BG)
 

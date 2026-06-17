@@ -58,7 +58,9 @@ blit_shader :: rend.renderer_blit_shader
 Tilemap :: rend.Tilemap
 create_tilemap :: rend.tilemap_create
 tilemap_set_tile :: rend.tilemap_set_tile
+tilemap_ensure_layers :: rend.tilemap_ensure_layers
 draw_tilemap :: rend.tilemap_draw
+draw_tilemap_layer :: rend.tilemap_draw_layer
 tilemap_is_solid :: rend.tilemap_is_solid
 destroy_tilemap :: rend.tilemap_destroy
 tilemap_load_tiled :: rend.tilemap_load_tiled
