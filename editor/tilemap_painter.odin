@@ -29,6 +29,7 @@ tilemap_painter_update :: proc(
 	e: ^eng.Engine,
 	panels: Panel_Layout,
 ) {
+	if es.active_tool != .Tilemap do return
 	tilemap := &es.scene_tilemap
 	if tilemap.cols == 0 || tilemap.rows == 0 {
 		return
@@ -103,15 +104,29 @@ tilemap_painter_render_palette :: proc(
 		rl.DrawRectangleLinesEx(erase_btn, 2, ui.ACCENT)
 	}
 
+	//TODO: need to make layers dynamic eventually. hardcoding for now.
+	layer_labels := [4]cstring{"Layer 0", "Layer 1", "Layer 2", "Layer 3"}
+	layer_y := rect.y + ui.ROW_HEIGHT + ui.PADDING
+	layer_btn_w := (rect.width - ui.PADDING * f32(tm.layers - 1)) / f32(tm.layers)
+	for i in 0 ..< tm.layers {
+		bx := rect.x + f32(i) * (layer_btn_w + ui.PADDING)
+		if ui.ui_button({bx, layer_y, layer_btn_w, ui.ROW_HEIGHT}, layer_labels[i]) {
+			p.active_layer = i
+		}
+		if p.active_layer == i {
+			rl.DrawRectangleLinesEx({bx, layer_y, layer_btn_w, ui.ROW_HEIGHT}, 2, ui.ACCENT)
+		}
+	}
+
 	tile_size: f32 = 48
 	tiles_per_row := max(i32(rect.width / tile_size), 1)
 	tile_count := tm.ts_tilecount
 	total_rows := (tile_count + tiles_per_row - 1) / tiles_per_row
 	ts_cols := tm.ts_columns
 	ts_rows := tm.tileset.height / tm.tile_h
-	y_off := rect.y + ui.ROW_HEIGHT + ui.PADDING
-	list_y := rect.y + ui.ROW_HEIGHT + ui.PADDING
-	list_h := rect.height - ui.ROW_HEIGHT - ui.PADDING
+	y_off := rect.y + (ui.ROW_HEIGHT + ui.PADDING) * 2
+	list_y := rect.y + (ui.ROW_HEIGHT + ui.PADDING) * 2
+	list_h := rect.height - (ui.ROW_HEIGHT - ui.PADDING) * 2
 	content_h := f32(total_rows) * tile_size
 	max_scroll := max(content_h - list_h, 0)
 
@@ -179,7 +194,6 @@ tilemap_painter_on_scene_loaded :: proc(p: ^Tilemap_Painter_State, s: ^Editor_St
 		p.tileset_image_rel = image_rel
 	}
 }
-
 
 tilemap_painter_destroy :: proc(p: ^Tilemap_Painter_State) {
 	delete(p.stroke)

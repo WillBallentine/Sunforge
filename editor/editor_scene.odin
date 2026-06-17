@@ -437,6 +437,7 @@ scene_load_resources :: proc(s: ^Editor_State) {
 	}
 
 	s.scene_tilemap, _ = eng.tilemap_load_tiled(tilemap_abs, tileset_tex)
+	eng.tilemap_ensure_layers(&s.scene_tilemap, 2)
 
 	rebuild_entity_sprites(s)
 }

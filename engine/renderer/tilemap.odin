@@ -106,6 +106,26 @@ tilemap_set_tile :: proc(tm: ^Tilemap, layer, col, row: i32, tile_index: i32) {
 	tm.tiles[layer][row * tm.cols + col] = tile_index
 }
 
+tilemap_ensure_layers :: proc(tm: ^Tilemap, min_layers: i32) {
+	if tm.layers >= min_layers do return
+	new_tiles := make([][]i32, min_layers)
+	for i in 0 ..< tm.layers {
+		new_tiles[i] = tm.tiles[i]
+	}
+
+	for i in tm.layers ..< min_layers {
+		layer := make([]i32, tm.rows * tm.cols)
+		for &cell in layer {
+			cell = -1
+		}
+
+		new_tiles[i] = layer
+	}
+	delete(tm.tiles)
+	tm.tiles = new_tiles
+	tm.layers = min_layers
+}
+
 tilemap_draw :: proc(tm: ^Tilemap, camera: rl.Camera2D) {
 	inv_zoom := 1.0 / camera.zoom
 
