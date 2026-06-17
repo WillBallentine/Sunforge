@@ -203,6 +203,9 @@ entity_data_clone :: proc(e: Entity_Data) -> Entity_Data {
 	out.name = strings.clone(e.name)
 	out.sprite_sheet_path = strings.clone(e.sprite_sheet_path)
 	out.animation = strings.clone(e.animation)
+	out.position = e.position
+	out.z = e.z
+	out.scale = e.scale
 	out.tags = make([]string, len(e.tags))
 	for i in 0 ..< len(e.tags) {out.tags[i] = strings.clone(e.tags[i])}
 	out.properties = make(map[string]string)
