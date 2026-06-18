@@ -18,7 +18,7 @@ EDIT_ZOOM_SPEED :: 0.1
 EDIT_ZOOM_MIN :: 0.1
 EDIT_ZOOM_MAX :: 5.0
 
-ENTITY_LAYER :: i32(1)
+ENTITY_Z :: f32(1.0)
 
 Editor_Action :: enum u32 {
 	Undo,
@@ -191,34 +191,63 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.renderer_clear(rl.Color{40, 40, 45, 255})
 	eng.begin_camera(s.edit_camera)
 
-	if s.active_tool != .Entity {
-		bg_end := min(ENTITY_LAYER, s.scene_tilemap.layers)
-		for layer in 0 ..< bg_end {
-			eng.draw_tilemap_layer(&s.scene_tilemap, s.edit_camera.camera, layer)
+	ENTITY_Z :: f32(1.0)
+
+	Render_Item :: struct {
+		z:     f32,
+		layer: i32,
+	}
+
+	items: [eng.MAX_TILE_LAYERS + 1]Render_Item
+	item_count := 0
+
+	for i in 0 ..< s.scene_tilemap.layers {
+		items[item_count] = {
+			z     = s.scene_tilemap.layer_z[i],
+			layer = i32(i),
 		}
+		item_count += 1
 	}
 
-	for entity, i in s.current_scene.entities {
-		entity_scale := entity.scale if entity.scale > 0 else 1.0
-		eng.draw_buffer_push(
-			&e.renderer.draw_buffer,
-			eng.Draw_Command {
-				sprite = s.entity_sprites[i],
-				position = entity.position,
-				scale = entity_scale,
-				rotation = 0,
-				pivot_point = .CENTER,
-				flip = .NONE,
-				tint = rl.WHITE,
-				z = entity.z,
-			},
-		)
+	items[item_count] = {
+		z     = ENTITY_Z,
+		layer = -1,
+	}
+	item_count += 1
+
+	for i in 1 ..< item_count {
+		key := items[i]
+		j := i - 1
+		for j >= 0 && items[j].z > key.z {
+			items[j + 1] = items[j]
+			j -= 1
+		}
+		items[j + 1] = key
 	}
 
-	eng.draw_buffer_flush(&e.renderer.draw_buffer)
-
-	for layer in ENTITY_LAYER ..< s.scene_tilemap.layers {
-		eng.draw_tilemap_layer(&s.scene_tilemap, s.edit_camera.camera, layer)
+	for i in 0 ..< item_count {
+		item := items[i]
+		if item.layer < 0 {
+			for entity, ei in s.current_scene.entities {
+				entity_scale := entity.scale if entity.scale > 0 else 1.0
+				eng.draw_buffer_push(
+					&e.renderer.draw_buffer,
+					eng.Draw_Command {
+						sprite = s.entity_sprites[ei],
+						position = entity.position,
+						scale = entity.scale,
+						rotation = 0,
+						pivot_point = .CENTER,
+						flip = .NONE,
+						tint = rl.WHITE,
+						z = entity.z,
+					},
+				)
+			}
+			eng.draw_buffer_flush(&e.renderer.draw_buffer)
+		} else {
+			eng.draw_tilemap_layer(&s.scene_tilemap, s.edit_camera.camera, item.layer)
+		}
 	}
 
 	if s.active_tool == .Entity {

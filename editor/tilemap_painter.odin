@@ -157,6 +157,22 @@ tilemap_painter_render_palette :: proc(
 		}
 	}
 
+	layer_z_labels := [eng.MAX_TILE_LAYERS]cstring{"Z0", "Z1", "Z2", "Z3"}
+	z_row_y := tools_rect.y + ui.PADDING
+	z_row_x := remove_x + btn_size + ui.PADDING
+	for i in 0 ..< tm.layers {
+		bx := z_row_x + f32(i) * (selector_w + ui.PADDING)
+		ui.ui_drag_float(
+			{bx, z_row_y, layer_btn_w, ui.ROW_HEIGHT},
+			layer_z_labels[i],
+			&tm.layer_z[i],
+			0.1,
+		)
+		if rl.IsMouseButtonReleased(.LEFT) {
+			tilemap_save(es)
+		}
+	}
+
 
 	tile_size: f32 = 48
 	tiles_per_row := max(i32(rect.width / tile_size), 1)
