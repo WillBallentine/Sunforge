@@ -59,12 +59,11 @@ Tilemap :: rend.Tilemap
 MAX_TILE_LAYERS :: rend.MAX_TILE_LAYERS
 create_tilemap :: rend.tilemap_create
 tilemap_set_tile :: rend.tilemap_set_tile
-tilemap_ensure_layers :: rend.tilemap_ensure_layers
 draw_tilemap :: rend.tilemap_draw
 draw_tilemap_layer :: rend.tilemap_draw_layer
 tilemap_add_layer :: rend.tilemap_add_layer
 tilemap_remove_layer :: rend.tilemap_remove_layer
-tilemap_insert_layer :: rend.tilemap_inser_layer_at
+tilemap_insert_layer :: rend.tilemap_insert_layer_at
 tilemap_is_solid :: rend.tilemap_is_solid
 destroy_tilemap :: rend.tilemap_destroy
 tilemap_load_tiled :: rend.tilemap_load_tiled

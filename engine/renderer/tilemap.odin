@@ -6,7 +6,7 @@ import "core:os"
 import "core:strings"
 import rl "vendor:raylib"
 
-MAX_TILE_LAYERS :: 10
+MAX_TILE_LAYERS :: 4
 TILED_FLIP_MASK :: u32(0xE0000000)
 
 Tilemap :: struct {
@@ -20,6 +20,7 @@ Tilemap :: struct {
 	tileset:      rl.Texture2D,
 	ts_columns:   i32,
 	ts_tilecount: i32,
+	layer_z:      [MAX_TILE_LAYERS]f32,
 }
 
 Tiled_Property :: struct {
@@ -48,6 +49,7 @@ Tiled_Layer :: struct {
 	name:     string,
 	encoding: string,
 	data:     []u32,
+	z:        f32,
 }
 
 Tiled_Map :: struct {
@@ -94,6 +96,10 @@ tilemap_create :: proc(
 	ts_rows := tileset.height / tile_h
 	total_tiles := ts_columns * ts_rows
 	tm.solid = make([]bool, total_tiles)
+
+	for i in 0 ..< layers {
+		tm.layer_z[i] = f32(i) * 2
+	}
 
 	return tm
 }
@@ -177,6 +183,7 @@ tilemap_add_layer :: proc(tm: ^Tilemap) -> bool {
 	}
 
 	new_tiles[tm.layers] = layer
+	tm.layer_z[tm.layers] = f32(tm.layers) * 2
 	delete(tm.tiles)
 	tm.tiles = new_tiles
 	tm.layers += 1
@@ -199,7 +206,7 @@ tilemap_remove_layer :: proc(tm: ^Tilemap, layer: i32) -> bool {
 	return true
 }
 
-tilemap_inser_layer_at :: proc(tm: ^Tilemap, layer: i32, data: []i32) -> bool {
+tilemap_insert_layer_at :: proc(tm: ^Tilemap, layer: i32, data: []i32) -> bool {
 	if tm.layers >= MAX_TILE_LAYERS do return false
 	if layer < 0 || layer > tm.layers do return false
 
@@ -283,6 +290,7 @@ tilemap_save_tiled :: proc(path: string, tilemap: ^Tilemap, image_rel: string) -
 		strings.write_string(&b, "    {\n")
 		strings.write_string(&b, "      \"type\": \"tilelayer\",\n")
 		fmt.sbprintf(&b, "      \"name\": \"layer_%d\",\n", layer_i)
+		fmt.sbprintf(&b, "      \"z\": %f,\n", tilemap.layer_z[layer_i])
 		strings.write_string(&b, "      \"data\": [\n")
 		count := tilemap.rows * tilemap.cols
 		for i in 0 ..< count {
@@ -345,6 +353,7 @@ tilemap_load_tiled :: proc(path: string, tileset: rl.Texture2D) -> (Tilemap, boo
 	}
 
 	tile_layer_data: [MAX_TILE_LAYERS][]u32
+	tile_layer_z: [MAX_TILE_LAYERS]f32
 	tile_layer_count := 0
 	for layer in tiled.layers {
 		if layer.type != "tilelayer" do continue
@@ -361,6 +370,11 @@ tilemap_load_tiled :: proc(path: string, tileset: rl.Texture2D) -> (Tilemap, boo
 		}
 
 		tile_layer_data[tile_layer_count] = layer.data
+		if layer.z != 0 || tile_layer_z == 0 {
+			tile_layer_z[tile_layer_count] = layer.z
+		} else {
+			tile_layer_z[tile_layer_count] = f32(tile_layer_count) * 2
+		}
 		tile_layer_count += 1
 	}
 
@@ -382,6 +396,7 @@ tilemap_load_tiled :: proc(path: string, tileset: rl.Texture2D) -> (Tilemap, boo
 
 	tm.tiles = make([][]i32, tm.layers)
 	for i in 0 ..< tile_layer_count {
+		tm.layer_z[i] = tile_layer_z[i]
 		cells := make([]i32, tm.rows * tm.cols)
 		for gid, cell_i in tile_layer_data[i] {
 			if gid == 0 {
