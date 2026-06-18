@@ -2,6 +2,7 @@ package main
 
 import eng "../engine"
 import ui "./ui"
+import "core:fmt"
 import "core:path/filepath"
 import rl "vendor:raylib"
 
@@ -87,8 +88,10 @@ tilemap_painter_update :: proc(
 
 tilemap_painter_render_palette :: proc(
 	p: ^Tilemap_Painter_State,
+	es: ^Editor_State,
 	tm: ^eng.Tilemap,
 	rect: rl.Rectangle,
+	tools_rect: rl.Rectangle,
 	wheel: f32,
 ) {
 	if tm.tileset.width == 0 || tm.ts_tilecount == 0 {
@@ -104,19 +107,56 @@ tilemap_painter_render_palette :: proc(
 		rl.DrawRectangleLinesEx(erase_btn, 2, ui.ACCENT)
 	}
 
-	//TODO: need to make layers dynamic eventually. hardcoding for now.
-	layer_labels := [4]cstring{"Layer 0", "Layer 1", "Layer 2", "Layer 3"}
-	layer_y := rect.y + ui.ROW_HEIGHT + ui.PADDING
-	layer_btn_w := (rect.width - ui.PADDING * f32(tm.layers - 1)) / f32(tm.layers)
+	layer_labels := make([]cstring, eng.MAX_TILE_LAYERS)
+	for i in 0 ..< eng.MAX_TILE_LAYERS {
+		layer_labels[i] = fmt.ctprintf("Layer %d", i)
+	}
+
+	layer_y := tools_rect.y + ui.ROW_HEIGHT + ui.PADDING
+	btn_size := f32(ui.ROW_HEIGHT)
+	controls_w := btn_size * 2 + ui.PADDING
+	selector_w := tools_rect.width / 15
+	layer_btn_w := (selector_w - ui.PADDING * f32(tm.layers - 1))
+	starting_x := tools_rect.x + (ui.PADDING * 3) + (selector_w * 2)
+
 	for i in 0 ..< tm.layers {
-		bx := rect.x + f32(i) * (layer_btn_w + ui.PADDING)
-		if ui.ui_button({bx, layer_y, layer_btn_w, ui.ROW_HEIGHT}, layer_labels[i]) {
+		bx := starting_x + f32(i) * (selector_w + ui.PADDING) + selector_w
+		if ui.ui_button({bx, layer_y + ui.PADDING, layer_btn_w, ui.ROW_HEIGHT}, layer_labels[i]) {
 			p.active_layer = i
 		}
 		if p.active_layer == i {
-			rl.DrawRectangleLinesEx({bx, layer_y, layer_btn_w, ui.ROW_HEIGHT}, 2, ui.ACCENT)
+			rl.DrawRectangleLinesEx(
+				{bx, layer_y + ui.PADDING, layer_btn_w, ui.ROW_HEIGHT},
+				2,
+				ui.ACCENT,
+			)
 		}
 	}
+
+	if ui.ui_button(
+		{starting_x + selector_w, tools_rect.y + ui.PADDING, btn_size, ui.ROW_HEIGHT},
+		"+",
+	) {
+		if tm.layers < eng.MAX_TILE_LAYERS {
+			cmd := make_layer_add_command(tm)
+			history_push(&es.history, cmd)
+			p.active_layer = tm.layers - 1
+			tilemap_save(es)
+		}
+	}
+
+	remove_x := starting_x + selector_w + btn_size + ui.PADDING
+	if ui.ui_button({remove_x, tools_rect.y + ui.PADDING, btn_size, ui.ROW_HEIGHT}, "-") {
+		if tm.layers > 1 {
+			cmd := make_layer_remove_command(tm, p.active_layer)
+			history_push(&es.history, cmd)
+			if p.active_layer >= tm.layers {
+				p.active_layer = tm.layers - 1
+			}
+			tilemap_save(es)
+		}
+	}
+
 
 	tile_size: f32 = 48
 	tiles_per_row := max(i32(rect.width / tile_size), 1)

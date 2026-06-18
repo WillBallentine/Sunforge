@@ -6,7 +6,7 @@ import "core:os"
 import "core:strings"
 import rl "vendor:raylib"
 
-MAX_TILE_LAYERS :: 4
+MAX_TILE_LAYERS :: 10
 TILED_FLIP_MASK :: u32(0xE0000000)
 
 Tilemap :: struct {
@@ -78,8 +78,7 @@ tilemap_create :: proc(
 	tm.rows = rows
 	tm.tile_w = tile_w
 	tm.tile_h = tile_h
-	tm.layers = layers
-	tm.tileset = tileset
+	tm.layers = layers; tm.tileset = tileset
 	tm.ts_columns = ts_columns
 	tm.ts_tilecount = ts_columns * (tileset.height / tile_h)
 
@@ -165,6 +164,54 @@ tilemap_draw :: proc(tm: ^Tilemap, camera: rl.Camera2D) {
 			}
 		}
 	}
+}
+
+tilemap_add_layer :: proc(tm: ^Tilemap) -> bool {
+	if tm.layers >= MAX_TILE_LAYERS do return false
+
+	new_tiles := make([][]i32, tm.layers + 1)
+	copy(new_tiles[:tm.layers], tm.tiles)
+	layer := make([]i32, tm.rows * tm.cols)
+	for &cell in layer {
+		cell = -1
+	}
+
+	new_tiles[tm.layers] = layer
+	delete(tm.tiles)
+	tm.tiles = new_tiles
+	tm.layers += 1
+	return true
+}
+
+tilemap_remove_layer :: proc(tm: ^Tilemap, layer: i32) -> bool {
+	if tm.layers <= 1 do return false
+	if layer < 0 || layer >= tm.layers do return false
+
+	delete(tm.tiles[layer])
+
+	new_tiles := make([][]i32, tm.layers - 1)
+	copy(new_tiles[:layer], tm.tiles[:layer])
+	copy(new_tiles[layer:], tm.tiles[layer:])
+
+	delete(tm.tiles)
+	tm.tiles = new_tiles
+	tm.layers -= 1
+	return true
+}
+
+tilemap_inser_layer_at :: proc(tm: ^Tilemap, layer: i32, data: []i32) -> bool {
+	if tm.layers >= MAX_TILE_LAYERS do return false
+	if layer < 0 || layer > tm.layers do return false
+
+	new_tiles := make([][]i32, tm.layers + 1)
+	copy(new_tiles[:layer], tm.tiles[:layer])
+	new_tiles[layer] = data
+	copy(new_tiles[layer + 1:], tm.tiles[layer:])
+
+	delete(tm.tiles)
+	tm.tiles = new_tiles
+	tm.layers += 1
+	return true
 }
 
 tilemap_draw_layer :: proc(tm: ^Tilemap, camera: rl.Camera2D, layer: i32) {

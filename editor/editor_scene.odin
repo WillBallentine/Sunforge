@@ -12,6 +12,7 @@ import rl "vendor:raylib"
 PANEL_LEFT_WIDTH :: 220
 PANEL_RIGHT_WIDTH :: 280
 PANEL_BOTTOM_HEIGHT :: 180
+PANEL_TOP_HEIGHT :: 90
 
 EDIT_ZOOM_SPEED :: 0.1
 EDIT_ZOOM_MIN :: 0.1
@@ -28,6 +29,7 @@ Panel_Layout :: struct {
 	left:   rl.Rectangle,
 	right:  rl.Rectangle,
 	bottom: rl.Rectangle,
+	top:    rl.Rectangle,
 	world:  rl.Rectangle,
 }
 
@@ -139,6 +141,7 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 
 	if e.input.mouse.wheel != 0 &&
 	   !rl.CheckCollisionPointRec(e.input.mouse.position, panels.bottom) &&
+	   !rl.CheckCollisionPointRec(e.input.mouse.position, panels.top) &&
 	   !rl.CheckCollisionPointRec(e.input.mouse.position, panels.left) {
 		s.edit_camera.camera.zoom += e.input.mouse.wheel * EDIT_ZOOM_SPEED
 		s.edit_camera.camera.zoom = engCore.clamp(
@@ -159,6 +162,12 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	}
 	tilemap_painter_update(&s.tilemap_painter, s, e, panels)
 	entity_placement_update(&s.entity_placer, s, e, panels)
+
+	if s.active_tool == .Entity &&
+	   s.entity_placer.selected >= 0 &&
+	   rl.IsMouseButtonReleased(.LEFT) {
+		scene_save_current(s)
+	}
 
 	ui.ui_begin(&e.input)
 }
@@ -244,6 +253,14 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		rl.WHITE,
 	)
 
+	tools := ui.ui_panel(panels.top, "Tools")
+	inspector := ui.ui_panel(panels.right, "Inspector")
+	inspector_rw := inspector.width - ui.PADDING * 2
+	inspector_y := inspector.y + ui.PADDING
+	tools_btn_w := tools.width / 10
+	tools_rw := tools.width - ui.PADDING * 2
+	tools_y := tools.y + ui.PADDING
+
 	if s.active_tool == .Entity {
 		entity_rect := ui.ui_panel(panels.left, "Entities")
 		entity_list_render(&s.entity_placer, &s.current_scene, entity_rect, e.input.mouse.wheel)
@@ -251,27 +268,26 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		palette_rect := ui.ui_panel(panels.left, "Palette")
 		tilemap_painter_render_palette(
 			&s.tilemap_painter,
+			s,
 			&s.scene_tilemap,
 			palette_rect,
+			tools,
 			e.input.mouse.wheel,
 		)
 	}
 
-	inspector := ui.ui_panel(panels.right, "Inspector")
-	rw := inspector.width - ui.PADDING * 2
-	y := inspector.y + ui.PADDING
 	// TODO: eventually this should be a dropdown or toolbar of somekind
 	if ui.ui_button(
-		{inspector.x + ui.PADDING, inspector.y + ui.PADDING, rw, ui.ROW_HEIGHT},
+		{tools.x + ui.PADDING, tools.y + ui.PADDING, tools_btn_w, ui.ROW_HEIGHT},
 		"New Scene",
 	) {
 		s.new_scene_dialog.open = true
 	}
 	if ui.ui_button(
 		{
-			inspector.x + ui.PADDING,
-			inspector.y + ui.PADDING + ui.ROW_HEIGHT + ui.PADDING,
-			rw,
+			tools.x + ui.PADDING,
+			tools.y + ui.PADDING + ui.ROW_HEIGHT + ui.PADDING,
+			tools_btn_w,
 			ui.ROW_HEIGHT,
 		},
 		"Select Scene",
@@ -281,9 +297,9 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 	if ui.ui_button(
 		{
-			inspector.x + ui.PADDING,
-			inspector.y + (ui.ROW_HEIGHT * 2) + (ui.PADDING * 3),
-			rw,
+			tools.x + (ui.PADDING * 2) + tools_btn_w,
+			tools.y + ui.PADDING,
+			tools_btn_w,
 			ui.ROW_HEIGHT,
 		},
 		"Tilemap Tool",
@@ -292,16 +308,16 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 	if ui.ui_button(
 		{
-			inspector.x + ui.PADDING,
-			inspector.y + (ui.ROW_HEIGHT * 3) + (ui.PADDING * 4),
-			rw,
+			tools.x + (ui.PADDING * 2) + tools_btn_w,
+			tools.y + (ui.PADDING * 2) + ui.ROW_HEIGHT,
+			tools_btn_w,
 			ui.ROW_HEIGHT,
 		},
 		"Entity Tool",
 	) {
 		s.active_tool = .Entity
 	}
-	y += ui.ROW_HEIGHT + ui.PADDING
+	tools.y += ui.ROW_HEIGHT + ui.PADDING
 
 	if s.active_tool == .Entity && s.entity_placer.selected >= 0 {
 		idx := s.entity_placer.selected
@@ -399,12 +415,23 @@ compute_panel_layout :: proc() -> Panel_Layout {
 	sw := f32(rl.GetScreenWidth())
 	sh := f32(rl.GetScreenHeight())
 	return Panel_Layout {
-		left = {0, 0, PANEL_LEFT_WIDTH, sh - PANEL_BOTTOM_HEIGHT},
-		right = {sw - PANEL_RIGHT_WIDTH, 0, PANEL_RIGHT_WIDTH, sh - PANEL_BOTTOM_HEIGHT},
+		left = {
+			0,
+			PANEL_TOP_HEIGHT,
+			PANEL_LEFT_WIDTH,
+			sh - PANEL_BOTTOM_HEIGHT - PANEL_TOP_HEIGHT,
+		},
+		right = {
+			sw - PANEL_RIGHT_WIDTH,
+			PANEL_TOP_HEIGHT,
+			PANEL_RIGHT_WIDTH,
+			sh - PANEL_BOTTOM_HEIGHT - PANEL_TOP_HEIGHT,
+		},
 		bottom = {0, sh - PANEL_BOTTOM_HEIGHT, sw, PANEL_BOTTOM_HEIGHT},
+		top = {0, 0, sw, PANEL_TOP_HEIGHT},
 		world = {
 			PANEL_LEFT_WIDTH,
-			0,
+			PANEL_TOP_HEIGHT,
 			sw - PANEL_LEFT_WIDTH - PANEL_RIGHT_WIDTH,
 			sh - PANEL_BOTTOM_HEIGHT,
 		},
@@ -437,7 +464,7 @@ scene_load_resources :: proc(s: ^Editor_State) {
 	}
 
 	s.scene_tilemap, _ = eng.tilemap_load_tiled(tilemap_abs, tileset_tex)
-	eng.tilemap_ensure_layers(&s.scene_tilemap, 2)
+	//eng.tilemap_ensure_layers(&s.scene_tilemap, 2)
 
 	rebuild_entity_sprites(s)
 }
