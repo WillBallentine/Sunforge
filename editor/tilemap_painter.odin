@@ -17,6 +17,7 @@ Tilemap_Painter_State :: struct {
 	tileset_image_rel: string,
 	layer_visible:     [eng.MAX_TILE_LAYERS]bool,
 	entities_visible:  bool,
+	show_grid:         bool,
 }
 
 tilemap_painter_init :: proc() -> Tilemap_Painter_State {
@@ -27,6 +28,7 @@ tilemap_painter_init :: proc() -> Tilemap_Painter_State {
 	tps.stroke = make([dynamic]Tile_Cell_Edit, 0)
 	tps.visited = make(map[[2]i32]bool)
 	tps.entities_visible = true
+	tps.show_grid = false
 	return tps
 }
 
@@ -103,16 +105,6 @@ tilemap_painter_render_palette :: proc(
 	if tm.tileset.width == 0 || tm.ts_tilecount == 0 {
 		return
 	}
-
-	erase_label: cstring = "Erase: ON" if p.erase_mode else "Erase: OFF"
-	erase_btn := rl.Rectangle{rect.x, rect.y, rect.width, ui.ROW_HEIGHT}
-	if ui.ui_button(erase_btn, erase_label) {
-		p.erase_mode = !p.erase_mode
-	}
-	if p.erase_mode {
-		rl.DrawRectangleLinesEx(erase_btn, 2, ui.ACCENT)
-	}
-
 	layer_labels := make([]cstring, eng.MAX_TILE_LAYERS)
 	for i in 0 ..< eng.MAX_TILE_LAYERS {
 		layer_labels[i] = fmt.ctprintf("Layer %d", i)
@@ -126,6 +118,20 @@ tilemap_painter_render_palette :: proc(
 	starting_x := tools_rect.x + (ui.PADDING * 3) + (selector_w * 2)
 	layer_x := starting_x
 	visibility_x := starting_x
+
+	erase_label: cstring = "Erase: ON" if p.erase_mode else "Erase: OFF"
+	erase_btn := rl.Rectangle {
+		tools_rect.x + (tools_rect.width - layer_btn_w) - ui.PADDING,
+		tools_rect.y,
+		layer_btn_w,
+		ui.ROW_HEIGHT,
+	}
+	if ui.ui_button(erase_btn, erase_label) {
+		p.erase_mode = !p.erase_mode
+	}
+	if p.erase_mode {
+		rl.DrawRectangleLinesEx(erase_btn, 2, ui.ACCENT)
+	}
 
 	for i in 0 ..< tm.layers {
 		bx := layer_x + f32(i) * (selector_w + ui.PADDING) + selector_w
