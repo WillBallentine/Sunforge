@@ -202,18 +202,22 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	item_count := 0
 
 	for i in 0 ..< s.scene_tilemap.layers {
+		if s.tilemap_painter.layer_visible[i] {
+			items[item_count] = {
+				z     = s.scene_tilemap.layer_z[i],
+				layer = i32(i),
+			}
+			item_count += 1
+		}
+	}
+
+	if s.tilemap_painter.entities_visible {
 		items[item_count] = {
-			z     = s.scene_tilemap.layer_z[i],
-			layer = i32(i),
+			z     = ENTITY_Z,
+			layer = -1,
 		}
 		item_count += 1
 	}
-
-	items[item_count] = {
-		z     = ENTITY_Z,
-		layer = -1,
-	}
-	item_count += 1
 
 	for i in 1 ..< item_count {
 		key := items[i]
