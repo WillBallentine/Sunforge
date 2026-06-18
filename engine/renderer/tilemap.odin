@@ -78,8 +78,7 @@ tilemap_create :: proc(
 	tm.rows = rows
 	tm.tile_w = tile_w
 	tm.tile_h = tile_h
-	tm.layers = layers
-	tm.tileset = tileset
+	tm.layers = layers; tm.tileset = tileset
 	tm.ts_columns = ts_columns
 	tm.ts_tilecount = ts_columns * (tileset.height / tile_h)
 

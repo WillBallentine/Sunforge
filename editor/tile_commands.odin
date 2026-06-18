@@ -48,13 +48,13 @@ Tile_Stroke_Data :: struct {
 
 Layer_Add_Data :: struct {
 	tilemap: ^eng.Tilemap,
-	index:   i32,
+	layer:   i32,
 }
 
 
 Layer_Remove_Data :: struct {
 	tilemap:    ^eng.Tilemap,
-	index:      i32,
+	layer:      i32,
 	layer_data: []i32,
 }
 
@@ -243,17 +243,43 @@ layer_add_do :: proc(data: rawptr) {
 
 layer_add_undo :: proc(data: rawptr) {
 	d := cast(^Layer_Add_Data)data
-	eng.tilemap_remove_layer(d.tilemap, d.index)
+	eng.tilemap_remove_layer(d.tilemap, d.layer)
 }
 
 layer_remove_do :: proc(data: rawptr) {
 	d := cast(^Layer_Remove_Data)data
-	eng.tilemap_remove_layer(d.tilemap, d.index)
+	eng.tilemap_remove_layer(d.tilemap, d.layer)
 }
 
 layer_remove_undo :: proc(data: rawptr) {
 	d := cast(^Layer_Remove_Data)data
 	restored := make([]i32, len(d.layer_data))
-	eng.tilemap_remove_layer(d.tilemap, d.index)
+	eng.tilemap_remove_layer(d.tilemap, d.layer)
+}
+
+layer_remove_destroy :: proc(data: rawptr) {
+	d := cast(^Layer_Remove_Data)data
+	delete(d.layer_data)
+}
+
+make_layer_add_command :: proc(tm: ^eng.Tilemap) -> Editor_Command {
+	d := new(Layer_Add_Data)
+	d.tilemap = tm
+	d.layer = tm.layers
+	return Editor_Command{do_fn = layer_add_do, undo_fn = layer_add_undo, data = d}
+}
+
+make_layer_remove_command :: proc(tm: ^eng.Tilemap, layer: i32) -> Editor_Command {
+	d := new(Layer_Remove_Data)
+	d.tilemap = tm
+	d.layer = layer
+	d.layer_data = make([]i32, tm.rows * tm.cols)
+	copy(d.layer_data, tm.tiles[layer])
+	return Editor_Command {
+		do_fn = layer_remove_do,
+		undo_fn = layer_remove_undo,
+		destroy_fn = layer_remove_destroy,
+		data = d,
+	}
 }
 
