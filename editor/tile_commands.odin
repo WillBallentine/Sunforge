@@ -46,6 +46,18 @@ Tile_Stroke_Data :: struct {
 	count:   int,
 }
 
+Layer_Add_Data :: struct {
+	tilemap: ^eng.Tilemap,
+	index:   i32,
+}
+
+
+Layer_Remove_Data :: struct {
+	tilemap:    ^eng.Tilemap,
+	index:      i32,
+	layer_data: []i32,
+}
+
 tile_edit_do :: proc(data: rawptr) {
 	d := cast(^Tile_Edit_Data)data
 	eng.tilemap_set_tile(d.tilemap, d.layer, d.col, d.row, d.new_index)
@@ -221,5 +233,27 @@ entity_data_destroy :: proc(e: ^Entity_Data) {
 	delete(e.tags)
 	for k, v in e.properties {delete(k); delete(v)}
 	delete(e.properties)
+}
+
+
+layer_add_do :: proc(data: rawptr) {
+	d := cast(^Layer_Add_Data)data
+	eng.tilemap_add_layer(d.tilemap)
+}
+
+layer_add_undo :: proc(data: rawptr) {
+	d := cast(^Layer_Add_Data)data
+	eng.tilemap_remove_layer(d.tilemap, d.index)
+}
+
+layer_remove_do :: proc(data: rawptr) {
+	d := cast(^Layer_Remove_Data)data
+	eng.tilemap_remove_layer(d.tilemap, d.index)
+}
+
+layer_remove_undo :: proc(data: rawptr) {
+	d := cast(^Layer_Remove_Data)data
+	restored := make([]i32, len(d.layer_data))
+	eng.tilemap_remove_layer(d.tilemap, d.index)
 }
 

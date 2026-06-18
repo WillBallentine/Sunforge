@@ -160,6 +160,12 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	tilemap_painter_update(&s.tilemap_painter, s, e, panels)
 	entity_placement_update(&s.entity_placer, s, e, panels)
 
+	if s.active_tool == .Entity &&
+	   s.entity_placer.selected >= 0 &&
+	   rl.IsMouseButtonReleased(.LEFT) {
+		scene_save_current(s)
+	}
+
 	ui.ui_begin(&e.input)
 }
 
