@@ -15,13 +15,19 @@ Tilemap_Painter_State :: struct {
 	visited:           map[[2]i32]bool,
 	palette_scroll:    f32,
 	tileset_image_rel: string,
+	layer_visible:     [eng.MAX_TILE_LAYERS]bool,
+	entities_visible:  bool,
 }
 
 tilemap_painter_init :: proc() -> Tilemap_Painter_State {
-	return Tilemap_Painter_State {
-		stroke = make([dynamic]Tile_Cell_Edit, 0),
-		visited = make(map[[2]i32]bool),
+	tps: Tilemap_Painter_State
+	for _, i in tps.layer_visible {
+		tps.layer_visible[i] = true
 	}
+	tps.stroke = make([dynamic]Tile_Cell_Edit, 0)
+	tps.visited = make(map[[2]i32]bool)
+	tps.entities_visible = true
+	return tps
 }
 
 tilemap_painter_update :: proc(
@@ -118,9 +124,11 @@ tilemap_painter_render_palette :: proc(
 	selector_w := tools_rect.width / 15
 	layer_btn_w := (selector_w - ui.PADDING * f32(tm.layers - 1))
 	starting_x := tools_rect.x + (ui.PADDING * 3) + (selector_w * 2)
+	layer_x := starting_x
+	visibility_x := starting_x
 
 	for i in 0 ..< tm.layers {
-		bx := starting_x + f32(i) * (selector_w + ui.PADDING) + selector_w
+		bx := layer_x + f32(i) * (selector_w + ui.PADDING) + selector_w
 		if ui.ui_button({bx, layer_y + ui.PADDING, layer_btn_w, ui.ROW_HEIGHT}, layer_labels[i]) {
 			p.active_layer = i
 		}
@@ -131,6 +139,28 @@ tilemap_painter_render_palette :: proc(
 				ui.ACCENT,
 			)
 		}
+		layer_x += layer_btn_w
+	}
+
+	for i in 0 ..< tm.layers {
+		bx :=
+			visibility_x +
+			f32(i) * (selector_w + ui.PADDING) +
+			selector_w +
+			layer_btn_w +
+			ui.PADDING
+		if ui.ui_button(
+			{bx, layer_y + ui.PADDING, layer_btn_w, ui.ROW_HEIGHT},
+			"hide" if p.layer_visible[i] == true else "show",
+		) {
+			p.layer_visible[i] = !p.layer_visible[i]
+			rl.DrawRectangleLinesEx(
+				{bx, layer_y + ui.PADDING, layer_btn_w, ui.ROW_HEIGHT},
+				2,
+				ui.ACCENT,
+			)
+		}
+		visibility_x += layer_btn_w
 	}
 
 	if ui.ui_button(
@@ -171,6 +201,19 @@ tilemap_painter_render_palette :: proc(
 		if rl.IsMouseButtonReleased(.LEFT) {
 			tilemap_save(es)
 		}
+	}
+
+	z_show_x := z_row_x + (layer_btn_w * 2) + ui.PADDING + (selector_w / 2)
+	if ui.ui_button(
+		{z_show_x, z_row_y, layer_btn_w, ui.ROW_HEIGHT},
+		"hide" if p.entities_visible == true else "show",
+	) {
+		p.entities_visible = !p.entities_visible
+		rl.DrawRectangleLinesEx(
+			{z_show_x, layer_y + ui.PADDING, layer_btn_w, ui.ROW_HEIGHT},
+			2,
+			ui.ACCENT,
+		)
 	}
 
 
