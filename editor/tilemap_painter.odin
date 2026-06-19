@@ -17,6 +17,7 @@ Tilemap_Painter_State :: struct {
 	tileset_image_rel: string,
 	layer_visible:     [eng.MAX_TILE_LAYERS]bool,
 	entities_visible:  bool,
+	pick_mode:         bool,
 	show_grid:         bool,
 }
 
@@ -28,6 +29,7 @@ tilemap_painter_init :: proc() -> Tilemap_Painter_State {
 	tps.stroke = make([dynamic]Tile_Cell_Edit, 0)
 	tps.visited = make(map[[2]i32]bool)
 	tps.entities_visible = true
+	tps.pick_mode = false
 	tps.show_grid = false
 	return tps
 }
@@ -59,6 +61,17 @@ tilemap_painter_update :: proc(
 		row < tilemap.rows
 
 	in_world := rl.CheckCollisionPointRec(mouse, panels.world)
+
+	if p.pick_mode {
+		if e.input.mouse.right.pressed && in_map {
+			tile_idx := tilemap.tiles[p.active_layer][row * tilemap.cols + col]
+			if tile_idx >= 0 {
+				p.active_tile = int(tile_idx)
+				p.erase_mode = false
+			}
+		}
+		return
+	}
 
 	if e.input.mouse.left.pressed && in_world {
 		p.painting = true
