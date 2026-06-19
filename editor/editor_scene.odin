@@ -160,14 +160,9 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	}
 
 
-	if eng.input_pressed(&e.input, act(.Copy)) {
+	if rl.IsKeyDown(.LEFT_ALT) {
 		s.tilemap_painter.pick_mode = !s.tilemap_painter.pick_mode
-		if s.tilemap_painter.pick_mode {
-			rl.SetMouseCursor(.POINTING_HAND)
-		} else {
-			rl.SetMouseCursor(.DEFAULT)
-			s.tilemap_painter.pick_mode = !s.tilemap_painter.pick_mode
-		}
+		rl.SetMouseCursor(.POINTING_HAND)
 	}
 
 
