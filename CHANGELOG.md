@@ -74,6 +74,44 @@ This document summarizes Sunforge's development to date, grouped by engine syste
 - **`tile_commands.odin`**: `Tile_Cell_Edit` (col, row, old_index, new_index) and `Tile_Stroke_Data` (pointer to tilemap, layer, fixed array of up to `MAX_STROKE_CELLS = 256` edits, count); `make_tile_stroke_command` builds a reversible command from a completed stroke; `make_tile_edit_command` wraps a single-cell edit
 - Undo/redo bound to `Ctrl+Z` / `Ctrl+Y` in `editor_update`
 
+
+### Entity Placement and Inspector
+
+- **`entity_placement.odin`**: `Entity_Placement_State` tracks selected entity index, drag state, drag offset, drag start position, and list scroll offset. Click in world space to place a new `Entity_Data`; click an existing entity gizmo to select and drag it; press `Delete` to remove it.
+- **Entity undo/redo commands** (`tile_commands.odin`): `Entity_Place_Data`, `Entity_Move_Data`, and `Entity_Delete_Data` command types following the same `do_fn`/`undo_fn` pattern as tile stroke commands. `entity_data_clone` deep-copies all heap-allocated fields (name, sprite_sheet_path, animation, tags, properties); `entity_data_destroy` frees them. `make_entity_place_command` clones the entity at make-time so the command owns its data independently of the placement state.
+- **Entity inspector**: selected entity properties exposed in the Inspector panel — name (`ui_text_input`), X/Y position, Z depth, and scale (`ui_drag_float` pairs), sprite sheet path display, and an "Assign Sprite" button that pulls the selected texture from the asset browser and joins it with `RESOURCES_DIR`. Inspector edits are auto-saved via `scene_save_current` on mouse release.
+- **Entity list panel**: in Entity Tool mode the left panel switches from the tile palette to a scrollable entity list (`entity_list_render`). Each row shows the entity name; clicking selects it. Scroll position tracked as `list_scroll: f32` with scissor-mode clipping.
+- **Entity sprite rendering**: `rebuild_entity_sprites` populates a parallel `entity_sprites: []eng.Sprite` slice from each entity's `sprite_sheet_path`, using the shared `scene_texture` texture cache. Entities are submitted to the draw buffer each frame with their `z` and `scale` fields. A zero or negative scale falls back to 1.0 to handle old scene files.
+- **Entity gizmos**: in Entity Tool mode a crosshair is drawn at each entity's world position (thickness = `1.5 / zoom`); the selected entity also shows a selection rectangle (`entity_gizmo_rect`). Both scale-compensate for camera zoom.
+- **`scene_save_current`**: auto-saves the full scene JSON after every entity place, move, delete, and inspector commit (mouse release while an entity is selected in Entity Tool mode).
+
+### Tilemap — Multi-layer and Dynamic Layer Management
+
+- **`tilemap_add_layer`**: appends a new all-empty (`-1`) tile layer up to `MAX_TILE_LAYERS = 4`; initializes `layer_z` for the new slot; returns false if already at the cap.
+- **`tilemap_remove_layer`**: removes a layer at a given index, freeing its backing `[]i32`; shifts remaining layers down; guards against removing the last layer.
+- **`tilemap_insert_layer_at`**: inserts a caller-provided `[]i32` at a specific index (takes ownership); used by layer-remove undo to re-insert saved layer data.
+- **Layer add/remove undo/redo** (`tile_commands.odin`): `Layer_Add_Data` and `Layer_Remove_Data` command types. `make_layer_remove_command` clones the layer data at make-time (before `do_fn` removes it) so undo can re-insert it; `layer_remove_undo` clones again when re-inserting so the command retains its copy for repeated undo/redo cycles.
+- **Per-layer visibility**: `layer_visible: [MAX_TILE_LAYERS]bool` added to `Tilemap_Painter_State` (all true by default); hide/show toggle buttons per layer in the tools panel; hidden layers are skipped in the render loop but can still be painted.
+- **Entity visibility**: `entities_visible: bool` added to `Tilemap_Painter_State`; a hide/show button in the tools panel controls whether the entity block is included in the render loop.
+- **Palette UI updates**: layer selector row with per-layer label buttons, `+`/`-` add/remove buttons, per-layer hide/show toggles, and per-layer z drag floats. Erase button relocated to the tools bar. Layer controls call `history_push` and `tilemap_save` directly via the `es: ^Editor_State` parameter added to `tilemap_painter_render_palette`.
+
+### Tilemap — Unified Z-Sort Render Ordering
+
+- **`layer_z: [MAX_TILE_LAYERS]f32`** added to the `Tilemap` struct (value type, no allocation). Default: `layer_z[i] = f32(i) * 2`. Initialized in `tilemap_create`, `tilemap_load_tiled`, and `tilemap_add_layer`.
+- **`Tiled_Layer.z: f32`**: non-standard engine extension written per-layer into the Tiled JSON by `tilemap_save_tiled` and read back by `tilemap_load_tiled`. Old files without the field unmarshal to 0.0 and receive the default.
+- **Unified render loop** (`editor_scene.odin`): the hardcoded `ENTITY_LAYER :: i32(1)` split is replaced by a `Render_Item` array of up to `MAX_TILE_LAYERS + 1` items (tile layers + one entity block sentinel). Items are insertion-sorted by z each frame and executed in order — tile layer items call `eng.draw_tilemap_layer`; the entity item pushes all entities to the draw buffer and calls `draw_buffer_flush`. `ENTITY_Z :: f32(1.0)` places the entity block between layer 0 and layer 1 by default.
+
+### Tilemap Painter — Tile Utilities
+
+- **Tile grid overlay**: `show_grid: bool` added to `Tilemap_Painter_State`. `G` key toggles it via the `Grid` `Editor_Action` binding. When enabled, `rl.DrawRectangleLinesEx` is called once per visible tile cell after all render items are drawn; line thickness = `1 / camera.zoom`.
+- **Tile eyedropper / pick mode**: `pick_mode: bool` added to `Tilemap_Painter_State`. Hold `Alt` to enter pick mode (cursor set to `.POINTING_HAND`); release `Alt` to exit (cursor reset to `.DEFAULT`). In pick mode `tilemap_painter_update` returns early, bypassing all paint logic. Right-clicking a cell with `tile_idx >= 0` sets `active_tile` and clears `erase_mode`; clicking an empty cell is a silent no-op.
+- **Tile Rotation**: press `R` to rotate selected tile for painting
+
+### Scene Management Updates
+
+- **`new_scene_dialog.odin`**: replaces the hardcoded `default_title_scene()` test fixture. `editor_init` now reads `project.entry_scene` and auto-opens the New Scene dialog when no entry scene exists, rather than writing a scene pointing at nonexistent resources.
+- **`scene_browser_dialog.odin`**: `select_scene` handles the `entity_sprites` double-free by nilling the slice after `delete` before `scene_load_resources` runs.
+
 ## Example / Tooling
 
 - `main.odin` example scene combining the systems above: a tilemap-based level, a player character with idle/walk/jump-flip animations (landing triggers a particle burst via a frame event), jump particle bursts, camera follow with shake on jump, a font-rendered title, and a debug overlay of live input state rendered with a second font
@@ -81,6 +119,5 @@ This document summarizes Sunforge's development to date, grouped by engine syste
 
 ## Looking Ahead
 
-tier-0-editor work continues: the core editing loop (tilemap painter, scene management, undo/redo, auto-save) is in place. Remaining tier-0 work includes entity placement and inspector, particle editor, animation editor, and play-in-editor.
+tier-0-editor work continues. Remaining tier-0 items: particle editor, animation editor (including data-driven sprite sheet format and entity animation wiring), play-in-editor mode, build/export pipeline.  
 See [README.md](README.md#roadmap) and the [issue tracker](https://github.com/WillBallentine/Sunforge/issues) for planned work across tier-0 through tier-10 and post-v1.
-

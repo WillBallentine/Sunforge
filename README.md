@@ -19,13 +19,23 @@ Sunforge is **pre-v1** and under active development. APIs are unstable and may c
 ### Project System (`project/`)
 - **Project System**: a portable project layout (project.json + resources/ + scenes/) independent of the Sunforge source tree. `Project_Data` (name, entry scene, window config, icon path) is created/loaded/saved via `project_create`/`project_open`/`project_save`; `project_apply_icon` applies a project's window icon via `rl.LoadImage`/`rl.SetWindowIcon`.
 
+
 ### Editor (`editor/`)
-- **Editor shell**: a separate executable for creating and opening Sunforge projects. Project setup uses a GUI project selector/creator with a recently-opened-projects list persisted to `recent_projects.json` next to the executable. Once a project loads, the editor opens into the editor view with an independent free-fly edit camera (right/middle-mouse drag to pan, scroll wheel to zoom), a world viewport rendered via the render-target/blit pipeline, and a resize-aware three-panel layout (Palette, Inspector, Assets) built on a custom immediate-mode UI toolkit (`editor/ui/`).
+- **Editor shell**: a separate executable for creating and opening Sunforge projects. Project setup uses a GUI project selector/creator with a recently-opened-projects list persisted to `recent_projects.json` next to the executable. Once a project loads, the editor opens into the editor view with an independent free-fly edit camera (right/middle-mouse drag to pan, scroll wheel to zoom), a world viewport rendered via the render-target/blit pipeline, and a resize-aware panel layout (Tools bar across the top, Palette/Entities left, Inspector right, Assets bottom) built on a custom immediate-mode UI toolkit (`editor/ui/`).
 - **New Scene dialog**: create a new scene by entering a name and grid dimensions (width x height in tiles); generates a blank Tiled-format JSON tilemap and saves it into the project's `scenes/` directory, then loads it immediately into the editor.
 - **Scene Browser**: lists all `.json` scene files in the project's `scenes/` directory, allows switching the active scene from within the editor, and supports renaming scene files. The active entry scene is persisted back to `project.json` on selection.
-- **Tilemap Painter**: left-click to paint tiles onto the tilemap, left-click drag for continuous strokes. A scrollable tile palette in the left panel shows all tiles from the active tileset (scaled to fixed thumbnails); clicking a tile selects it. An Erase toggle replaces the selected tile with an empty cell (-1). Painting is applied live during drag; on mouse release the full stroke is committed to the undo/redo history and auto-saved to disk.
-- **Undo/redo history**: `Ctrl+Z` / `Ctrl+Y` step through a command stack (`Editor_History`). Commands are data-driven (`do_fn` / `undo_fn` / `data`) so any editor operation can be made undoable. Currently wired for tile stroke operations (`Tile_Stroke_Data`, up to 256 cells per stroke).
-- **Tilemap auto-save**: after every completed paint stroke, the tilemap is written to its `.json` file on disk in Tiled format (width, height, tilewidth, tileheight, layers with tile data arrays, tilesets block).
+- **Tilemap Painter**: left-click to paint tiles onto the active layer, left-click drag for continuous strokes. A scrollable tile palette in the left panel shows all tiles from the active tileset (scaled to fixed thumbnails); clicking a tile selects it. An Erase toggle replaces the selected tile with an empty cell (-1). Painting is applied live during drag; on mouse release the full stroke is committed to the undo/redo history and auto-saved to disk.
+- **Multi-layer painting**: the painter supports up to four independent tile layers. Layer selector buttons switch the active paint target. `+` / `-` buttons add or remove layers with full undo/redo support. Per-layer visibility toggles ("hide"/"show") control which layers are drawn in the editor viewport without affecting paint operations. Per-layer z drag floats control each layer's position in the unified render order.
+- **Tile grid overlay**: press `G` to toggle a 1px grid drawn over the tilemap in world space, scaled with camera zoom, useful for aligning tiles precisely.
+- **Tile eyedropper (pick mode)**: hold `Alt` to enter pick mode (cursor changes to a pointing hand); right-click any painted tile to set it as the active palette selection without leaving the paint workflow.
+- **Tile Rotation**: press `R` to change rotation of selected tile before painting to scene
+- **Unified z-sort layer ordering**: tile layers and the entity block are sorted and rendered together by z value each frame rather than split by a hardcoded layer index. Default z values (layer 0 = 0.0, entity block = 1.0, layer 1 = 2.0) reproduce the expected background/entity/foreground order out of the box. Layer z values are editable per-layer in the tools panel and are persisted to the Tiled JSON file.
+- **Entity Placement tool**: switch to Entity Tool to place entities in world space by clicking. Drag an entity's crosshair gizmo to move it; press `Delete` to remove the selected entity. All operations (place, move, delete) are fully undoable via `Ctrl+Z` / `Ctrl+Y`.
+- **Entity Inspector**: selecting an entity reveals its properties in the Inspector panel — name (text input), X/Y position (drag floats), Z depth (drag float), scale (drag float), sprite sheet path (display), and an "Assign Sprite" button that applies the currently selected asset browser entry. All inspector edits are auto-saved on mouse release.
+- **Entity list panel**: while in Entity Tool mode the left panel switches from the tile palette to a scrollable list of all placed entities; clicking a row selects it in the viewport.
+- **Entity sprite rendering**: entities with an assigned sprite sheet are rendered live in the world viewport using the shared texture cache (`scene_texture`) and the draw buffer, with z depth and scale applied. Entities without a sprite show only their crosshair gizmo.
+- **Undo/redo history**: `Ctrl+Z` / `Ctrl+Y` step through a command stack (`Editor_History`). Commands are data-driven (`do_fn` / `undo_fn` / `data`) so any editor operation can be made undoable. Wired for tile stroke operations and all entity operations (place, move, delete).
+- **Tilemap auto-save**: after every completed paint stroke or entity operation the tilemap and scene are written to disk automatically.
 - **Tilemap boundary indicator**: a white rectangle is drawn in world space at the tilemap's exact pixel extents so you always know where the drawable area ends. Line thickness compensates for camera zoom to stay visually consistent.
 - **Asset browser**: finds all files within the project's `resources/` folder and presents them as a selectable list. Texture files show thumbnails; all assets are sortable by type.
 
@@ -60,8 +70,9 @@ These packages exist as stubs and are planned for upcoming tiers (see [Roadmap](
 - `engine/audio`: sound and music playback
 - `engine/assets`: asset caching and hot-reload
 - `engine/ui`: immediate-mode UI system for in-game UI (separate from the editor-only `editor/ui` toolkit)
-- Editor: entity placement, entity inspector panel, particle editor, animation editor, play-in-editor
+- Editor: particle editor, animation editor, play-in-editor
 - Entity/scene management, timers, events, save system, scripting, and more
+
 
 ## Getting Started
 
