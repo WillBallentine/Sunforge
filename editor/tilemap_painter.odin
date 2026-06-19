@@ -17,6 +17,16 @@ Tilemap_Painter_State :: struct {
 	tileset_image_rel: string,
 	layer_visible:     [eng.MAX_TILE_LAYERS]bool,
 	entities_visible:  bool,
+	pick_mode:         bool,
+	show_grid:         bool,
+	active_rotation:   u8,
+}
+
+Tile_Rotation :: enum u8 {
+	R0   = 0,
+	R90  = 1,
+	R180 = 2,
+	R270 = 3,
 }
 
 tilemap_painter_init :: proc() -> Tilemap_Painter_State {
@@ -27,6 +37,9 @@ tilemap_painter_init :: proc() -> Tilemap_Painter_State {
 	tps.stroke = make([dynamic]Tile_Cell_Edit, 0)
 	tps.visited = make(map[[2]i32]bool)
 	tps.entities_visible = true
+	tps.pick_mode = false
+	tps.show_grid = false
+	tps.active_rotation = 0
 	return tps
 }
 
@@ -58,6 +71,17 @@ tilemap_painter_update :: proc(
 
 	in_world := rl.CheckCollisionPointRec(mouse, panels.world)
 
+	if p.pick_mode {
+		if e.input.mouse.right.pressed && in_map {
+			tile_idx := tilemap.tiles[p.active_layer][row * tilemap.cols + col]
+			if tile_idx >= 0 {
+				p.active_tile = int(tile_idx)
+				p.erase_mode = false
+			}
+		}
+		return
+	}
+
 	if e.input.mouse.left.pressed && in_world {
 		p.painting = true
 		clear(&p.visited)
@@ -68,7 +92,8 @@ tilemap_painter_update :: proc(
 		key := [2]i32{col, row}
 		if !p.visited[key] {
 			p.visited[key] = true
-			new_idx: i32 = -1 if p.erase_mode else i32(p.active_tile)
+			new_idx: i32 =
+				-1 if p.erase_mode else (i32(p.active_rotation) << 16) | i32(p.active_tile)
 			old_idx := tilemap.tiles[p.active_layer][row * tilemap.cols + col]
 			if old_idx != new_idx {
 				append(
@@ -103,16 +128,6 @@ tilemap_painter_render_palette :: proc(
 	if tm.tileset.width == 0 || tm.ts_tilecount == 0 {
 		return
 	}
-
-	erase_label: cstring = "Erase: ON" if p.erase_mode else "Erase: OFF"
-	erase_btn := rl.Rectangle{rect.x, rect.y, rect.width, ui.ROW_HEIGHT}
-	if ui.ui_button(erase_btn, erase_label) {
-		p.erase_mode = !p.erase_mode
-	}
-	if p.erase_mode {
-		rl.DrawRectangleLinesEx(erase_btn, 2, ui.ACCENT)
-	}
-
 	layer_labels := make([]cstring, eng.MAX_TILE_LAYERS)
 	for i in 0 ..< eng.MAX_TILE_LAYERS {
 		layer_labels[i] = fmt.ctprintf("Layer %d", i)
@@ -126,6 +141,20 @@ tilemap_painter_render_palette :: proc(
 	starting_x := tools_rect.x + (ui.PADDING * 3) + (selector_w * 2)
 	layer_x := starting_x
 	visibility_x := starting_x
+
+	erase_label: cstring = "Erase: ON" if p.erase_mode else "Erase: OFF"
+	erase_btn := rl.Rectangle {
+		tools_rect.x + (tools_rect.width - layer_btn_w) - ui.PADDING,
+		tools_rect.y,
+		layer_btn_w,
+		ui.ROW_HEIGHT,
+	}
+	if ui.ui_button(erase_btn, erase_label) {
+		p.erase_mode = !p.erase_mode
+	}
+	if p.erase_mode {
+		rl.DrawRectangleLinesEx(erase_btn, 2, ui.ACCENT)
+	}
 
 	for i in 0 ..< tm.layers {
 		bx := layer_x + f32(i) * (selector_w + ui.PADDING) + selector_w
@@ -215,6 +244,15 @@ tilemap_painter_render_palette :: proc(
 			ui.ACCENT,
 		)
 	}
+
+	rotation_labels := [4]cstring{"R0", "R90", "R180", "R270"}
+	rl.DrawText(
+		fmt.ctprintf("Tile Roatation: %v", rotation_labels[p.active_rotation]),
+		i32(z_show_x + (layer_btn_w * 3) + ui.PADDING + (selector_w / 2)),
+		i32(tools_rect.y) + ui.PADDING,
+		ui.FONT_SIZE,
+		ui.ACCENT,
+	)
 
 
 	tile_size: f32 = 48

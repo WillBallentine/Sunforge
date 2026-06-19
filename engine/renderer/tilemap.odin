@@ -8,6 +8,9 @@ import rl "vendor:raylib"
 
 MAX_TILE_LAYERS :: 4
 TILED_FLIP_MASK :: u32(0xE0000000)
+TILED_FLIP_H :: u32(0x80000000)
+TILED_FLIP_V :: u32(0x40000000)
+TILED_FLIP_D :: u32(0x20000000)
 
 Tilemap :: struct {
 	tiles:        [][]i32,
@@ -149,9 +152,11 @@ tilemap_draw :: proc(tm: ^Tilemap, camera: rl.Camera2D) {
 			for col in start_col ..< end_col {
 				tile_idx := tm.tiles[layer][row * tm.cols + col]
 				if tile_idx < 0 do continue
+				clean_idx := tile_idx & 0x0000FFFF
+				rotation := u8((tile_idx >> 16) & 0x3)
 
-				ts_col := tile_idx % tm.ts_columns
-				ts_row := tile_idx / tm.ts_columns
+				ts_col := clean_idx % tm.ts_columns
+				ts_row := clean_idx / tm.ts_columns
 				src := rl.Rectangle {
 					f32(ts_col * tm.tile_w),
 					f32(ts_row * tm.tile_h),
@@ -160,13 +165,15 @@ tilemap_draw :: proc(tm: ^Tilemap, camera: rl.Camera2D) {
 				}
 
 				dest := rl.Rectangle {
-					f32(col * tm.tile_w),
-					f32(row * tm.tile_h),
+					f32(col * tm.tile_w) + f32(tm.tile_w) / 2,
+					f32(row * tm.tile_h) + f32(tm.tile_h) / 2,
 					f32(tm.tile_w),
 					f32(tm.tile_h),
 				}
 
-				rl.DrawTexturePro(tm.tileset, src, dest, {0, 0}, 0, rl.WHITE)
+				origin := rl.Vector2{f32(tm.tile_w) / 2, f32(tm.tile_h) / 2}
+
+				rl.DrawTexturePro(tm.tileset, src, dest, origin, f32(rotation) * 90, rl.WHITE)
 			}
 		}
 	}
@@ -238,9 +245,11 @@ tilemap_draw_layer :: proc(tm: ^Tilemap, camera: rl.Camera2D, layer: i32) {
 		for col in start_col ..< end_col {
 			tile_idx := tm.tiles[layer][row * tm.cols + col]
 			if tile_idx < 0 do continue
+			clean_idx := tile_idx & 0x0000FFFF
+			rotation := u8((tile_idx >> 16) & 0x3)
 
-			ts_col := tile_idx % tm.ts_columns
-			ts_row := tile_idx / tm.ts_columns
+			ts_col := clean_idx % tm.ts_columns
+			ts_row := clean_idx / tm.ts_columns
 			src := rl.Rectangle {
 				f32(ts_col * tm.tile_w),
 				f32(ts_row * tm.tile_h),
@@ -249,13 +258,15 @@ tilemap_draw_layer :: proc(tm: ^Tilemap, camera: rl.Camera2D, layer: i32) {
 			}
 
 			dest := rl.Rectangle {
-				f32(col * tm.tile_w),
-				f32(row * tm.tile_h),
+				f32(col * tm.tile_w) + f32(tm.tile_w) / 2,
+				f32(row * tm.tile_h) + f32(tm.tile_h) / 2,
 				f32(tm.tile_w),
 				f32(tm.tile_h),
 			}
 
-			rl.DrawTexturePro(tm.tileset, src, dest, {0, 0}, 0, rl.WHITE)
+			origin := rl.Vector2{f32(tm.tile_w) / 2, f32(tm.tile_h) / 2}
+
+			rl.DrawTexturePro(tm.tileset, src, dest, origin, f32(rotation) * 90, rl.WHITE)
 		}
 	}
 }
@@ -295,7 +306,13 @@ tilemap_save_tiled :: proc(path: string, tilemap: ^Tilemap, image_rel: string) -
 		count := tilemap.rows * tilemap.cols
 		for i in 0 ..< count {
 			tile := tilemap.tiles[layer_i][i]
-			gid: i32 = 0 if tile < 0 else tile + 1
+			gid: u32 = 0
+			if tile >= 0 {
+				rotation := u8((tile >> 16) & 0x3)
+				clean_idx := tile & 0x0000FFFF
+				flags := rotation_to_tiled_flags(rotation)
+				gid = u32(clean_idx + 1) | flags
+			}
 			if i < count - 1 {
 				fmt.sbprintf(&b, "        %d,\n", gid)
 			} else {
@@ -403,8 +420,11 @@ tilemap_load_tiled :: proc(path: string, tileset: rl.Texture2D) -> (Tilemap, boo
 				cells[cell_i] = -1
 				continue
 			}
+			flags := gid & TILED_FLIP_MASK
+			rotation := tiled_flags_to_rotation(flags)
 			clean_gid := gid & ~TILED_FLIP_MASK
-			cells[cell_i] = i32(clean_gid) - i32(ts.firstgid)
+			tile_idx := i32(clean_gid) - i32(ts.firstgid)
+			cells[cell_i] = (i32(rotation) << 16) | tile_idx
 		}
 		tm.tiles[i] = cells
 	}
@@ -472,5 +492,30 @@ tiled_map_destroy :: proc(tiled: ^Tiled_Map) {
 		delete(ts.tiles)
 	}
 	delete(tiled.tilesets)
+}
+
+
+tiled_flags_to_rotation :: proc(flags: u32) -> u8 {
+	switch flags {
+	case TILED_FLIP_D | TILED_FLIP_H:
+		return 1
+	case TILED_FLIP_H | TILED_FLIP_V:
+		return 2
+	case TILED_FLIP_D | TILED_FLIP_V:
+		return 3
+	}
+	return 0
+}
+
+rotation_to_tiled_flags :: proc(rotation: u8) -> u32 {
+	switch rotation {
+	case 1:
+		return TILED_FLIP_D | TILED_FLIP_H
+	case 2:
+		return TILED_FLIP_H | TILED_FLIP_V
+	case 3:
+		return TILED_FLIP_D | TILED_FLIP_V
+	}
+	return 0
 }
 

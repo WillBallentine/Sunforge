@@ -23,6 +23,9 @@ ENTITY_Z :: f32(1.0)
 Editor_Action :: enum u32 {
 	Undo,
 	Redo,
+	Grid,
+	Copy,
+	Rotate,
 }
 
 Panel_Layout :: struct {
@@ -129,6 +132,9 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 
 	eng.input_bind_keyboard(&e.input, act(.Undo), .Z)
 	eng.input_bind_keyboard(&e.input, act(.Redo), .Y)
+	eng.input_bind_keyboard(&e.input, act(.Grid), .G)
+	eng.input_bind_keyboard(&e.input, act(.Copy), .LEFT_ALT)
+	eng.input_bind_keyboard(&e.input, act(.Rotate), .R)
 }
 
 editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
@@ -150,6 +156,25 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 			EDIT_ZOOM_MAX,
 		)
 	}
+
+	if eng.input_pressed(&e.input, act(.Grid)) {
+		s.tilemap_painter.show_grid = !s.tilemap_painter.show_grid
+	}
+
+	if eng.input_pressed(&e.input, act(.Rotate)) {
+		s.tilemap_painter.active_rotation = (s.tilemap_painter.active_rotation + 1) % 4
+	}
+
+	if rl.IsKeyDown(.LEFT_ALT) || rl.IsKeyDown(.RIGHT_ALT) {
+		if !s.tilemap_painter.pick_mode {
+			s.tilemap_painter.pick_mode = true
+			rl.SetMouseCursor(.POINTING_HAND)
+		}
+	} else if s.tilemap_painter.pick_mode {
+		s.tilemap_painter.pick_mode = false
+		rl.SetMouseCursor(.DEFAULT)
+	}
+
 
 	ctrl_down := rl.IsKeyDown(.LEFT_CONTROL) || rl.IsKeyDown(.RIGHT_CONTROL)
 	if ctrl_down && eng.input_pressed(&e.input, act(.Undo)) {
@@ -252,6 +277,24 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		} else {
 			eng.draw_tilemap_layer(&s.scene_tilemap, s.edit_camera.camera, item.layer)
 		}
+	}
+
+
+	x := f32(0)
+	y := f32(0)
+	for row in 0 ..< s.scene_tilemap.rows {
+		for col in 0 ..< s.scene_tilemap.cols {
+			if s.tilemap_painter.show_grid {
+				rl.DrawRectangleLinesEx(
+					{x, y, f32(s.scene_tilemap.tile_w), f32(s.scene_tilemap.tile_h)},
+					1 / s.current_scene.camera.zoom,
+					rl.GRAY,
+				)
+			}
+			x += f32(s.scene_tilemap.tile_w)
+		}
+		x = 0
+		y += f32(s.scene_tilemap.tile_h)
 	}
 
 	if s.active_tool == .Entity {
