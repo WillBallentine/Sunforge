@@ -97,10 +97,11 @@ engine/
   project/                      Project_Data manifest, project_create/open/save, icon application
   editor/
     main.odin                   editor entry point (project picker)
-    editor_scene.odin           editor shell: edit camera, world viewport, panel layout
-    tilemap_painter.odin        tile palette, paint/erase strokes, auto-save
-    tile_commands.odin          Tile_Cell_Edit, Tile_Stroke_Data, make_tile_stroke_command
+    editor_scene.odin           editor shell: edit camera, world viewport, panel layout, render loop
+    tilemap_painter.odin        tile palette, multi-layer painting, visibility, z ordering, grid, pick mode
+    tile_commands.odin          tile and entity undo/redo commands (stroke, place, move, delete)
     editor_history.odin         Editor_History, Editor_Command, undo/redo stack
+    entity_placement.odin       entity placement tool, drag-to-move, entity list panel
     new_scene_dialog.odin       New Scene dialog: name + grid dims -> Tiled JSON tilemap
     scene_browser_dialog.odin   Scene Browser: list/switch/rename .json scenes
     scene_data.odin             Scene_Data (tilemap_path, entities, camera), scene_load/save
