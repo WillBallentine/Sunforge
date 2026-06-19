@@ -160,9 +160,14 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	}
 
 
-	if rl.IsKeyDown(.LEFT_ALT) {
-		s.tilemap_painter.pick_mode = !s.tilemap_painter.pick_mode
-		rl.SetMouseCursor(.POINTING_HAND)
+	if rl.IsKeyDown(.LEFT_ALT) || rl.IsKeyDown(.RIGHT_ALT) {
+		if !s.tilemap_painter.pick_mode {
+			s.tilemap_painter.pick_mode = true
+			rl.SetMouseCursor(.POINTING_HAND)
+		}
+	} else if s.tilemap_painter.pick_mode {
+		s.tilemap_painter.pick_mode = false
+		rl.SetMouseCursor(.DEFAULT)
 	}
 
 
