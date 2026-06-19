@@ -54,6 +54,9 @@ tilemap_painter_update :: proc(
 	if tilemap.cols == 0 || tilemap.rows == 0 {
 		return
 	}
+	if p.active_layer >= tilemap.layers {
+		p.active_layer = tilemap.layers - 1
+	}
 
 	mouse := e.input.mouse.position
 	rt_mouse := rl.Vector2{mouse.x - panels.world.x, mouse.y - panels.world.y}
@@ -322,6 +325,7 @@ tilemap_save :: proc(s: ^Editor_State) {
 tilemap_painter_on_scene_loaded :: proc(p: ^Tilemap_Painter_State, s: ^Editor_State) {
 	delete(p.tileset_image_rel)
 	p.tileset_image_rel = ""
+	p.active_layer = 0
 	if s.current_scene.tilemap_path == "" {
 		return
 	}
