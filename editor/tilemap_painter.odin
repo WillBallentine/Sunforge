@@ -19,6 +19,14 @@ Tilemap_Painter_State :: struct {
 	entities_visible:  bool,
 	pick_mode:         bool,
 	show_grid:         bool,
+	active_rotation:   u8,
+}
+
+Tile_Rotation :: enum u8 {
+	R0   = 0,
+	R90  = 1,
+	R180 = 2,
+	R270 = 3,
 }
 
 tilemap_painter_init :: proc() -> Tilemap_Painter_State {
@@ -31,6 +39,7 @@ tilemap_painter_init :: proc() -> Tilemap_Painter_State {
 	tps.entities_visible = true
 	tps.pick_mode = false
 	tps.show_grid = false
+	tps.active_rotation = 0
 	return tps
 }
 
@@ -83,7 +92,8 @@ tilemap_painter_update :: proc(
 		key := [2]i32{col, row}
 		if !p.visited[key] {
 			p.visited[key] = true
-			new_idx: i32 = -1 if p.erase_mode else i32(p.active_tile)
+			new_idx: i32 =
+				-1 if p.erase_mode else (i32(p.active_rotation) << 16) | i32(p.active_tile)
 			old_idx := tilemap.tiles[p.active_layer][row * tilemap.cols + col]
 			if old_idx != new_idx {
 				append(
@@ -234,6 +244,15 @@ tilemap_painter_render_palette :: proc(
 			ui.ACCENT,
 		)
 	}
+
+	rotation_labels := [4]cstring{"R0", "R90", "R180", "R270"}
+	rl.DrawText(
+		fmt.ctprintf("Tile Roatation: %v", rotation_labels[p.active_rotation]),
+		i32(z_show_x + (layer_btn_w * 3) + ui.PADDING + (selector_w / 2)),
+		i32(tools_rect.y) + ui.PADDING,
+		ui.FONT_SIZE,
+		ui.ACCENT,
+	)
 
 
 	tile_size: f32 = 48

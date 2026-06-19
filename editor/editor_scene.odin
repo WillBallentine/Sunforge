@@ -25,6 +25,7 @@ Editor_Action :: enum u32 {
 	Redo,
 	Grid,
 	Copy,
+	Rotate,
 }
 
 Panel_Layout :: struct {
@@ -133,6 +134,7 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 	eng.input_bind_keyboard(&e.input, act(.Redo), .Y)
 	eng.input_bind_keyboard(&e.input, act(.Grid), .G)
 	eng.input_bind_keyboard(&e.input, act(.Copy), .LEFT_ALT)
+	eng.input_bind_keyboard(&e.input, act(.Rotate), .R)
 }
 
 editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
@@ -159,6 +161,9 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 		s.tilemap_painter.show_grid = !s.tilemap_painter.show_grid
 	}
 
+	if eng.input_pressed(&e.input, act(.Rotate)) {
+		s.tilemap_painter.active_rotation = (s.tilemap_painter.active_rotation + 1) % 4
+	}
 
 	if rl.IsKeyDown(.LEFT_ALT) || rl.IsKeyDown(.RIGHT_ALT) {
 		if !s.tilemap_painter.pick_mode {
