@@ -4,6 +4,7 @@ import eng "../engine"
 import engCore "../engine/core"
 import proj "../project"
 import ui "./ui"
+import "core:fmt"
 import "core:path/filepath"
 import "core:strings"
 import util "utils"
@@ -182,10 +183,18 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 
 editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Editor_State)data
+	fmt.println("editor_render: start")
 	panels := compute_panel_layout()
+	fmt.println("editor_render: panels computed, world=", panels.world)
 
 	if i32(panels.world.width) != s.world_target.texture.width ||
 	   i32(panels.world.height) != s.world_target.texture.height {
+		fmt.println(
+			"editor_render: resizing render target to:",
+			panels.world.width,
+			"x",
+			panels.world.height,
+		)
 		eng.destroy_render_target(s.world_target)
 		s.world_target = eng.make_render_target_sized(
 			&e.renderer,
@@ -195,6 +204,7 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		s.edit_camera.camera.offset = {panels.world.width / 2, panels.world.height / 2}
 	}
 
+	fmt.println("editor_render: begin render target")
 	eng.begin_render_target(s.world_target)
 	eng.renderer_clear(rl.Color{40, 40, 45, 255})
 	eng.begin_camera(s.edit_camera)
@@ -302,7 +312,9 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 	eng.end_camera()
 	eng.end_render_target()
+	fmt.println("editor_render: end render target")
 
+	fmt.println("editor_render: blit world")
 	rl.DrawTexturePro(
 		s.world_target.texture,
 		{0, 0, f32(s.world_target.texture.width), -f32(s.world_target.texture.height)},
@@ -448,6 +460,8 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 			s.browse_scene_dialog.open = false
 		}
 	}
+
+	fmt.println("editor_render: done")
 }
 
 editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
@@ -492,7 +506,7 @@ compute_panel_layout :: proc() -> Panel_Layout {
 			PANEL_LEFT_WIDTH,
 			PANEL_TOP_HEIGHT,
 			sw - PANEL_LEFT_WIDTH - PANEL_RIGHT_WIDTH,
-			sh - PANEL_BOTTOM_HEIGHT,
+			sh - PANEL_BOTTOM_HEIGHT - PANEL_TOP_HEIGHT,
 		},
 	}
 }
@@ -508,10 +522,18 @@ scene_texture :: proc(s: ^Editor_State, path: string) -> rl.Texture2D {
 }
 
 scene_load_resources :: proc(s: ^Editor_State) {
+	fmt.println("scene_load_resources: start, tilemap_path: ", s.current_scene.tilemap_path)
 	tilemap_abs, _ := filepath.join({s.project_root, s.current_scene.tilemap_path})
 	defer delete(tilemap_abs)
+	fmt.println("scene_load_resources: tilemap_abs: ", tilemap_abs)
 
 	image_rels, ok := eng.tiled_get_all_tileset_images(tilemap_abs)
+	fmt.println(
+		"scene_load_resources: tiled_get_all_tileset_images: ok = ",
+		ok,
+		"count = ",
+		len(image_rels),
+	)
 	if !ok {
 		rebuild_entity_sprites(s)
 		return
@@ -524,6 +546,7 @@ scene_load_resources :: proc(s: ^Editor_State) {
 	defer delete(tileset_texs)
 
 	for rel, i in image_rels {
+		fmt.println("scene_load_resources: loading tileset: ", i, "rel =", rel)
 		joined, _ := filepath.join({tileset_dir, rel})
 		tileset_abs, _ := filepath.clean(joined)
 		delete(joined)
@@ -533,10 +556,21 @@ scene_load_resources :: proc(s: ^Editor_State) {
 	}
 	delete(image_rels)
 
+	fmt.println("scene_load_resources: calling destroy_tilemap")
 	eng.destroy_tilemap(&s.scene_tilemap)
+	fmt.println("scene_load_resources: calling tilemap_load_tiled")
 	s.scene_tilemap, _ = eng.tilemap_load_tiled(tilemap_abs, tileset_texs)
 
+	fmt.println(
+		"scene_load_resources: tilemap loaded, cols =",
+		s.scene_tilemap.cols,
+		"layers = ",
+		s.scene_tilemap.layers,
+	)
+
+	fmt.println("scene_load_resources: calling rebuild_entity_sprites")
 	rebuild_entity_sprites(s)
+	fmt.println("scene_load_resources: done")
 }
 
 rebuild_entity_sprites :: proc(s: ^Editor_State) {
