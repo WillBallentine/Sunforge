@@ -27,6 +27,7 @@ Picker_State :: struct {
 	recent_projects: []string,
 	path_input:      string,
 	status:          string,
+	pending_root:    string,
 }
 
 picker_scene :: proc() -> eng.Scene_Procs {
@@ -45,10 +46,18 @@ picker_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s.recent_projects = recent_projects_load()
 	s.path_input = strings.clone("")
 	s.status = strings.clone("")
+	s.pending_root = ""
 }
 
 picker_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
+	s := cast(^Picker_State)data
 	ui.ui_begin(&e.input)
+	if s.pending_root != "" {
+		root := s.pending_root
+		s.pending_root = ""
+		try_open(e, s, root)
+		delete(root)
+	}
 }
 
 picker_render :: proc(e: ^eng.Engine, data: rawptr) {
@@ -62,9 +71,8 @@ picker_render :: proc(e: ^eng.Engine, data: rawptr) {
 	for i in 0 ..< visible {
 		row := rl.Rectangle{PICKER_MARGIN, y, PICKER_WIDTH - PICKER_MARGIN * 2, ui.ROW_HEIGHT}
 		if ui.ui_button(row, fmt.ctprintf("%s", s.recent_projects[i])) {
-			if try_open(e, s, s.recent_projects[i]) {
-				return
-			}
+			s.pending_root = strings.clone(s.recent_projects[i])
+			return
 		}
 		y += ui.ROW_HEIGHT + 4
 	}
@@ -93,9 +101,8 @@ picker_render :: proc(e: ^eng.Engine, data: rawptr) {
 
 	ui.ui_text_input(input_rect, &s.path_input)
 	if ui.ui_button(open_rect, "Open") && len(s.path_input) > 0 {
-		if try_open(e, s, s.path_input) {
-			return
-		}
+		s.pending_root = strings.clone(s.path_input)
+		return
 	}
 
 	y += ui.ROW_HEIGHT + 16
@@ -104,9 +111,8 @@ picker_render :: proc(e: ^eng.Engine, data: rawptr) {
 	if ui.ui_button(create_rect, "Create New Project...") {
 		if picked, ok := pick_folder("Select a folder for the new project"); ok {
 			defer delete(picked)
-			if try_open(e, s, picked) {
-				return
-			}
+			s.pending_root = strings.clone(picked)
+			return
 		}
 	}
 	y += ui.ROW_HEIGHT + 16
@@ -125,6 +131,7 @@ picker_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	delete(s.recent_projects)
 	delete(s.path_input)
 	delete(s.status)
+	delete(s.pending_root)
 	free(data)
 }
 

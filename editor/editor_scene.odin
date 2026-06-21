@@ -73,8 +73,10 @@ editor_scene :: proc(root: string, project: proj.Project_Data) -> eng.Scene_Proc
 }
 
 editor_init :: proc(e: ^eng.Engine, data: rawptr) {
+	fmt.println("editor_init: start")
 	s := cast(^Editor_State)data
 
+	fmt.println("editor_init: before camera init")
 	eng.camera_init(
 		&s.edit_camera,
 		offset = {f32(e.renderer.logical_width) / 2, f32(e.renderer.logical_height) / 2},
@@ -82,43 +84,62 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 		trauma_decay = 0,
 		shake_max = 0,
 	)
+	fmt.println("editor_init: after camera init")
 	s.edit_camera.camera.target = {0, 0}
+	fmt.println("editor_init: before set min window size")
 	rl.SetWindowMinSize(PANEL_LEFT_WIDTH + PANEL_RIGHT_WIDTH + 400, PANEL_BOTTOM_HEIGHT + 400)
+	fmt.println("editor_init: after set min window size")
 
+	fmt.println("editor_init: make_render_target")
 	s.world_target = eng.make_render_target(&e.renderer)
+	fmt.println("editor_init: asset_browser_init")
 	s.asset_browser = asset_browser_init(s.project_root)
+	fmt.println("editor_init: make textures")
 	s.textures = make(map[string]rl.Texture2D)
+	fmt.println("editor_init: new_scene_dialog_init")
 	s.new_scene_dialog = new_scene_dialog_init()
+	fmt.println("editor_init: browse_scenes_dialog_init")
 	s.browse_scene_dialog = browse_scenes_dialog_init()
+	fmt.println("editor_init: tilemap_painter_init")
 	s.tilemap_painter = tilemap_painter_init()
+	fmt.println("editor_init: entity_placement_init")
 	s.entity_placer = entity_placement_init()
 
 	s.current_scene = Scene_Data{}
 	if s.project.entry_scene != "" {
+		fmt.println("editor_init: s.project.entry_scene != \"\"")
 		scene_path, _ := filepath.join({s.project_root, proj.SCENES_DIR, s.project.entry_scene})
 		defer delete(scene_path)
 
 		if loaded, ok := scene_load(scene_path); ok {
+			fmt.println("editor_init: s.project.entry_scene != \"\", scene_load called")
 			s.current_scene = loaded
 		}
 	}
 
 	if s.current_scene.tilemap_path != "" {
 		scene_load_resources(s)
+		fmt.println("init: returned from scene_load_resources")
 		tilemap_painter_on_scene_loaded(&s.tilemap_painter, s)
-		s.edit_camera.camera.target = {
-			f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w) / 2,
-			f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h) / 2,
+		fmt.println("init: after painter on scene load")
+		if s.scene_tilemap.cols > 0 {
+			s.edit_camera.camera.target = {
+				f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w) / 2,
+				f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h) / 2,
+			}
 		}
+		fmt.println("init: after camera center")
 	} else {
 		s.new_scene_dialog.open = true
 	}
 
+	fmt.println("init: before input bindings")
 	eng.input_bind_keyboard(&e.input, act(.Undo), .Z)
 	eng.input_bind_keyboard(&e.input, act(.Redo), .Y)
 	eng.input_bind_keyboard(&e.input, act(.Grid), .G)
 	eng.input_bind_keyboard(&e.input, act(.Copy), .LEFT_ALT)
 	eng.input_bind_keyboard(&e.input, act(.Rotate), .R)
+	fmt.println("init: after input bindings")
 }
 
 editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
@@ -183,18 +204,10 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 
 editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	s := cast(^Editor_State)data
-	fmt.println("editor_render: start")
 	panels := compute_panel_layout()
-	fmt.println("editor_render: panels computed, world=", panels.world)
 
 	if i32(panels.world.width) != s.world_target.texture.width ||
 	   i32(panels.world.height) != s.world_target.texture.height {
-		fmt.println(
-			"editor_render: resizing render target to:",
-			panels.world.width,
-			"x",
-			panels.world.height,
-		)
 		eng.destroy_render_target(s.world_target)
 		s.world_target = eng.make_render_target_sized(
 			&e.renderer,
@@ -204,7 +217,6 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		s.edit_camera.camera.offset = {panels.world.width / 2, panels.world.height / 2}
 	}
 
-	fmt.println("editor_render: begin render target")
 	eng.begin_render_target(s.world_target)
 	eng.renderer_clear(rl.Color{40, 40, 45, 255})
 	eng.begin_camera(s.edit_camera)
@@ -312,9 +324,7 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	}
 	eng.end_camera()
 	eng.end_render_target()
-	fmt.println("editor_render: end render target")
 
-	fmt.println("editor_render: blit world")
 	rl.DrawTexturePro(
 		s.world_target.texture,
 		{0, 0, f32(s.world_target.texture.width), -f32(s.world_target.texture.height)},
@@ -461,7 +471,6 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		}
 	}
 
-	fmt.println("editor_render: done")
 }
 
 editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
@@ -524,7 +533,6 @@ scene_texture :: proc(s: ^Editor_State, path: string) -> rl.Texture2D {
 scene_load_resources :: proc(s: ^Editor_State) {
 	fmt.println("scene_load_resources: start, tilemap_path: ", s.current_scene.tilemap_path)
 	tilemap_abs, _ := filepath.join({s.project_root, s.current_scene.tilemap_path})
-	defer delete(tilemap_abs)
 	fmt.println("scene_load_resources: tilemap_abs: ", tilemap_abs)
 
 	image_rels, ok := eng.tiled_get_all_tileset_images(tilemap_abs)
@@ -540,10 +548,8 @@ scene_load_resources :: proc(s: ^Editor_State) {
 	}
 
 	tileset_dir := filepath.dir(tilemap_abs)
-	defer delete(tileset_dir)
 
 	tileset_texs := make([]rl.Texture2D, len(image_rels))
-	defer delete(tileset_texs)
 
 	for rel, i in image_rels {
 		fmt.println("scene_load_resources: loading tileset: ", i, "rel =", rel)
@@ -570,6 +576,10 @@ scene_load_resources :: proc(s: ^Editor_State) {
 
 	fmt.println("scene_load_resources: calling rebuild_entity_sprites")
 	rebuild_entity_sprites(s)
+	fmt.println("scene_load_resources: deleting tileset_texs")
+	delete(tileset_texs)
+	fmt.println("scene_load_resources: deleting tilemap_abs")
+	delete(tilemap_abs)
 	fmt.println("scene_load_resources: done")
 }
 
