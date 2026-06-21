@@ -7,19 +7,18 @@ import "core:path/filepath"
 import rl "vendor:raylib"
 
 Tilemap_Painter_State :: struct {
-	active_tile:       int,
-	active_layer:      i32,
-	erase_mode:        bool,
-	painting:          bool,
-	stroke:            [dynamic]Tile_Cell_Edit,
-	visited:           map[[2]i32]bool,
-	palette_scroll:    f32,
-	tileset_image_rel: string,
-	layer_visible:     [eng.MAX_TILE_LAYERS]bool,
-	entities_visible:  bool,
-	pick_mode:         bool,
-	show_grid:         bool,
-	active_rotation:   u8,
+	active_tile:      int,
+	active_layer:     i32,
+	erase_mode:       bool,
+	painting:         bool,
+	stroke:           [dynamic]Tile_Cell_Edit,
+	visited:          map[[2]i32]bool,
+	palette_scroll:   f32,
+	layer_visible:    [eng.MAX_TILE_LAYERS]bool,
+	entities_visible: bool,
+	pick_mode:        bool,
+	show_grid:        bool,
+	active_rotation:  u8,
 }
 
 Tile_Rotation :: enum u8 {
@@ -128,9 +127,6 @@ tilemap_painter_render_palette :: proc(
 	tools_rect: rl.Rectangle,
 	wheel: f32,
 ) {
-	if tm.tileset.width == 0 || tm.ts_tilecount == 0 {
-		return
-	}
 	layer_labels := make([]cstring, eng.MAX_TILE_LAYERS)
 	for i in 0 ..< eng.MAX_TILE_LAYERS {
 		layer_labels[i] = fmt.ctprintf("Layer %d", i)
@@ -260,85 +256,97 @@ tilemap_painter_render_palette :: proc(
 
 	tile_size: f32 = 48
 	tiles_per_row := max(i32(rect.width / tile_size), 1)
-	tile_count := tm.ts_tilecount
-	total_rows := (tile_count + tiles_per_row - 1) / tiles_per_row
-	ts_cols := tm.ts_columns
-	ts_rows := tm.tileset.height / tm.tile_h
+	total_content_h: f32 = 0
+	for ts in tm.tileset {
+		total_rows := (ts.tilecount + tiles_per_row - 1) / tiles_per_row
+		total_content_h += f32(total_rows) * tile_size
+	}
 	y_off := rect.y + (ui.ROW_HEIGHT + ui.PADDING) * 2
 	list_y := rect.y + (ui.ROW_HEIGHT + ui.PADDING) * 2
 	list_h := rect.height - (ui.ROW_HEIGHT - ui.PADDING) * 2
-	content_h := f32(total_rows) * tile_size
-	max_scroll := max(content_h - list_h, 0)
+	max_scroll := max(total_content_h - list_h, 0)
 
 	if wheel != 0 && rl.CheckCollisionPointRec(ui.ctx.mouse_pos, rect) {
 		p.palette_scroll -= wheel * 20
 	}
 	p.palette_scroll = clamp(p.palette_scroll, 0, max_scroll)
 
+	palette_y := list_y
 	rl.BeginScissorMode(i32(rect.x), i32(list_y), i32(rect.width), i32(list_h))
 
-	for i in 0 ..< tile_count {
-		g_col := i % tiles_per_row
-		g_row := i / tiles_per_row
+	scroll_offset := p.palette_scroll
 
-		dst := rl.Rectangle {
-			rect.x + f32(g_col) * tile_size,
-			y_off + f32(g_row) * tile_size - p.palette_scroll,
-			tile_size,
-			tile_size,
+	for ts in tm.tileset {
+
+		ts_rows_count := ts.tilecount / ts.columns
+		if ts.tilecount % ts.columns != 0 {ts_rows_count += 1}
+
+		total_tile_rows := (ts.tilecount + tiles_per_row - 1) / tiles_per_row
+
+		for local_idx in 0 ..< ts.tilecount {
+			tile_gid := int(ts.firstgid) + int(local_idx)
+
+			g_col := local_idx % tiles_per_row
+			g_row := local_idx / tiles_per_row
+
+
+			dst := rl.Rectangle {
+				rect.x + f32(g_col) * tile_size,
+				y_off + f32(g_row) * tile_size - p.palette_scroll,
+				tile_size,
+				tile_size,
+			}
+
+			if dst.y + dst.height < list_y || dst.y > list_y + list_h {
+				continue
+			}
+
+
+			src_col := local_idx % ts.columns
+			src_row := local_idx / ts.columns
+
+			src := rl.Rectangle {
+				f32(src_col * tm.tile_w),
+				f32(src_row * tm.tile_h),
+				f32(tm.tile_w),
+				f32(tm.tile_h),
+			}
+
+
+			rl.DrawTexturePro(ts.texture, src, dst, {0, 0}, 0, rl.WHITE)
+
+			if tile_gid == p.active_tile {
+				rl.DrawRectangleLinesEx(dst, 2, ui.ACCENT)
+			}
+			if rl.CheckCollisionPointRec(ui.ctx.mouse_pos, dst) && ui.ctx.mouse_pressed {
+				p.active_tile = tile_gid
+				p.erase_mode = false
+			}
 		}
 
-		if dst.y + dst.height < list_y || dst.y > list_y + list_h {
-			continue
-		}
-
-		src := rl.Rectangle {
-			f32((i % ts_cols) * tm.tile_w),
-			f32((i / ts_cols) * tm.tile_h),
-			f32(tm.tile_w),
-			f32(tm.tile_h),
-		}
-
-		rl.DrawTexturePro(tm.tileset, src, dst, {0, 0}, 0, rl.WHITE)
-
-		if i == i32(p.active_tile) {
-			rl.DrawRectangleLinesEx(dst, 2, ui.ACCENT)
-		}
-		if rl.CheckCollisionPointRec(ui.ctx.mouse_pos, dst) && ui.ctx.mouse_pressed {
-			p.active_tile = int(i)
-			p.erase_mode = false
-		}
+		palette_y += f32(total_tile_rows) * tile_size
+		rl.EndScissorMode()
 	}
-	rl.EndScissorMode()
 }
 
 tilemap_save :: proc(s: ^Editor_State) {
-	if s.current_scene.tilemap_path == "" || s.tilemap_painter.tileset_image_rel == "" {
-		return
-	}
-	tilemap_abs, _ := filepath.join({s.project_root, s.current_scene.tilemap_path})
-	defer delete(tilemap_abs)
-
-	eng.tilemap_save_tiled(tilemap_abs, &s.scene_tilemap, s.tilemap_painter.tileset_image_rel)
-}
-
-tilemap_painter_on_scene_loaded :: proc(p: ^Tilemap_Painter_State, s: ^Editor_State) {
-	delete(p.tileset_image_rel)
-	p.tileset_image_rel = ""
-	p.active_layer = 0
 	if s.current_scene.tilemap_path == "" {
 		return
 	}
+	if len(s.scene_tilemap.tileset) == 0 do return
+
 	tilemap_abs, _ := filepath.join({s.project_root, s.current_scene.tilemap_path})
 	defer delete(tilemap_abs)
-	if image_rel, ok := eng.tiled_get_tileset_image(tilemap_abs); ok {
-		p.tileset_image_rel = image_rel
-	}
+
+	eng.tilemap_save_tiled(tilemap_abs, &s.scene_tilemap)
+}
+
+tilemap_painter_on_scene_loaded :: proc(p: ^Tilemap_Painter_State, s: ^Editor_State) {
+	p.active_layer = 0
 }
 
 tilemap_painter_destroy :: proc(p: ^Tilemap_Painter_State) {
 	delete(p.stroke)
 	delete(p.visited)
-	delete(p.tileset_image_rel)
 }
 

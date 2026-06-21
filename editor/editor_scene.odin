@@ -92,23 +92,6 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s.tilemap_painter = tilemap_painter_init()
 	s.entity_placer = entity_placement_init()
 
-	scene_path, _ := filepath.join({s.project_root, proj.SCENES_DIR, "level_01.json"})
-	defer delete(scene_path)
-
-	if loaded, ok := scene_load(scene_path); ok {
-		s.current_scene = loaded
-	} else {
-		s.current_scene = default_title_scene()
-		scene_save(scene_path, s.current_scene)
-	}
-
-	scene_load_resources(s)
-	tilemap_painter_on_scene_loaded(&s.tilemap_painter, s)
-	s.edit_camera.camera.target = {
-		f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w) / 2,
-		f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h) / 2,
-	}
-
 	s.current_scene = Scene_Data{}
 	if s.project.entry_scene != "" {
 		scene_path, _ := filepath.join({s.project_root, proj.SCENES_DIR, s.project.entry_scene})
@@ -528,19 +511,30 @@ scene_load_resources :: proc(s: ^Editor_State) {
 	tilemap_abs, _ := filepath.join({s.project_root, s.current_scene.tilemap_path})
 	defer delete(tilemap_abs)
 
-	tileset_tex: rl.Texture2D
-	if image_rel, ok := eng.tiled_get_tileset_image(tilemap_abs); ok {
-		defer delete(image_rel)
-		tileset_dir := filepath.dir(tilemap_abs)
-		joined, _ := filepath.join({tileset_dir, image_rel})
-		defer delete(joined)
-		tileset_abs, _ := filepath.clean(joined)
-		defer delete(tileset_abs)
-		tileset_tex = scene_texture(s, tileset_abs)
+	image_rels, ok := eng.tiled_get_all_tileset_images(tilemap_abs)
+	if !ok {
+		rebuild_entity_sprites(s)
+		return
 	}
 
-	s.scene_tilemap, _ = eng.tilemap_load_tiled(tilemap_abs, tileset_tex)
-	//eng.tilemap_ensure_layers(&s.scene_tilemap, 2)
+	tileset_dir := filepath.dir(tilemap_abs)
+	defer delete(tileset_dir)
+
+	tileset_texs := make([]rl.Texture2D, len(image_rels))
+	defer delete(tileset_texs)
+
+	for rel, i in image_rels {
+		joined, _ := filepath.join({tileset_dir, rel})
+		tileset_abs, _ := filepath.clean(joined)
+		delete(joined)
+		tileset_texs[i] = scene_texture(s, tileset_abs)
+		delete(tileset_abs)
+		delete(rel)
+	}
+	delete(image_rels)
+
+	eng.destroy_tilemap(&s.scene_tilemap)
+	s.scene_tilemap, _ = eng.tilemap_load_tiled(tilemap_abs, tileset_texs)
 
 	rebuild_entity_sprites(s)
 }
@@ -551,6 +545,8 @@ rebuild_entity_sprites :: proc(s: ^Editor_State) {
 	s.entity_sprites = make([]eng.Sprite, len(s.current_scene.entities))
 
 	for entity, i in s.current_scene.entities {
+		if entity.sprite_sheet_path == "" do continue
+
 		sprite_abs, _ := filepath.join({s.project_root, entity.sprite_sheet_path})
 		defer delete(sprite_abs)
 
@@ -562,30 +558,5 @@ rebuild_entity_sprites :: proc(s: ^Editor_State) {
 			src     = {0, 0, f32(tex.width), f32(tex.height)},
 		}
 	}
-}
-
-
-//for testing for now this will be removed once the proper editor is up and working
-default_title_scene :: proc() -> Scene_Data {
-	scene := Scene_Data {
-		tilemap_path = strings.clone("resources/tilemaps/level_01.json"),
-		entities = make([]Entity_Data, 1),
-		camera = Camera_Config_Data{follow_speed = 6.0, zoom = 1.0},
-	}
-
-	scene.entities[0] = Entity_Data {
-		name              = strings.clone("player"),
-		position          = rl.Vector2{635, 201},
-		sprite_sheet_path = strings.clone("resources/textures/test.png"),
-		animation         = strings.clone("idle"),
-		tags              = make([]string, 2),
-		properties        = make(map[string]string),
-	}
-
-	scene.entities[0].tags[0] = strings.clone("player")
-	scene.entities[0].tags[1] = strings.clone("controllable")
-	scene.entities[0].properties[strings.clone("speed")] = strings.clone("200")
-
-	return scene
 }
 

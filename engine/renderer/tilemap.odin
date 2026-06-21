@@ -13,17 +13,15 @@ TILED_FLIP_V :: u32(0x40000000)
 TILED_FLIP_D :: u32(0x20000000)
 
 Tilemap :: struct {
-	tiles:        [][]i32,
-	cols:         i32,
-	rows:         i32,
-	tile_w:       i32,
-	tile_h:       i32,
-	layers:       i32,
-	solid:        []bool,
-	tileset:      rl.Texture2D,
-	ts_columns:   i32,
-	ts_tilecount: i32,
-	layer_z:      [MAX_TILE_LAYERS]f32,
+	tiles:   [][]i32,
+	cols:    i32,
+	rows:    i32,
+	tile_w:  i32,
+	tile_h:  i32,
+	layers:  i32,
+	solid:   []bool,
+	tileset: []Tileset_Info,
+	layer_z: [MAX_TILE_LAYERS]f32,
 }
 
 Tiled_Property :: struct {
@@ -71,6 +69,14 @@ Tiled_Tileset_Ref :: struct {
 	},
 }
 
+Tileset_Info :: struct {
+	texture:   rl.Texture2D,
+	firstgid:  u32,
+	columns:   i32,
+	tilecount: i32,
+	image_rel: string,
+}
+
 tilemap_create :: proc(
 	cols, rows, tile_w, tile_h, layers: i32,
 	tileset: rl.Texture2D,
@@ -83,9 +89,7 @@ tilemap_create :: proc(
 	tm.rows = rows
 	tm.tile_w = tile_w
 	tm.tile_h = tile_h
-	tm.layers = layers; tm.tileset = tileset
-	tm.ts_columns = ts_columns
-	tm.ts_tilecount = ts_columns * (tileset.height / tile_h)
+	tm.layers = layers
 
 	tm.tiles = make([][]i32, layers)
 	for i in 0 ..< layers {
@@ -97,8 +101,15 @@ tilemap_create :: proc(
 	}
 
 	ts_rows := tileset.height / tile_h
-	total_tiles := ts_columns * ts_rows
-	tm.solid = make([]bool, total_tiles)
+	max_gid := u32(ts_columns * ts_rows) + 1
+	tm.solid = make([]bool, int(max_gid))
+	tm.tileset[0] = Tileset_Info {
+		texture   = tileset,
+		firstgid  = 1,
+		columns   = ts_columns,
+		tilecount = ts_columns * ts_rows,
+		image_rel = "",
+	}
 
 	for i in 0 ..< layers {
 		tm.layer_z[i] = f32(i) * 2
@@ -150,30 +161,45 @@ tilemap_draw :: proc(tm: ^Tilemap, camera: rl.Camera2D) {
 	for layer in 0 ..< tm.layers {
 		for row in start_row ..< end_row {
 			for col in start_col ..< end_col {
-				tile_idx := tm.tiles[layer][row * tm.cols + col]
-				if tile_idx < 0 do continue
-				clean_idx := tile_idx & 0x0000FFFF
-				rotation := u8((tile_idx >> 16) & 0x3)
+				tile_val := tm.tiles[layer][row * tm.cols + col]
+				if tile_val < 0 do continue
 
-				ts_col := clean_idx % tm.ts_columns
-				ts_row := clean_idx / tm.ts_columns
-				src := rl.Rectangle {
-					f32(ts_col * tm.tile_w),
-					f32(ts_row * tm.tile_h),
-					f32(tm.tile_w),
-					f32(tm.tile_h),
+				raw_gid := u32(tile_val & 0x0000FFFF)
+				rotation := u8((tile_val >> 16) & 0x3)
+
+				for ts in tm.tileset {
+					if raw_gid >= ts.firstgid && raw_gid < ts.firstgid + u32(ts.tilecount) {
+						local_idx := i32(raw_gid - ts.firstgid)
+						ts_col := local_idx % ts.columns
+						ts_row := local_idx / ts.columns
+
+						src := rl.Rectangle {
+							f32(ts_col * tm.tile_w),
+							f32(ts_row * tm.tile_h),
+							f32(tm.tile_w),
+							f32(tm.tile_h),
+						}
+
+						dest := rl.Rectangle {
+							f32(col * tm.tile_w) + f32(tm.tile_w) / 2,
+							f32(row * tm.tile_h) + f32(tm.tile_h) / 2,
+							f32(tm.tile_w),
+							f32(tm.tile_h),
+						}
+
+						origin := rl.Vector2{f32(tm.tile_w) / 2, f32(tm.tile_h) / 2}
+
+						rl.DrawTexturePro(
+							ts.texture,
+							src,
+							dest,
+							origin,
+							f32(rotation) * 90,
+							rl.WHITE,
+						)
+						break
+					}
 				}
-
-				dest := rl.Rectangle {
-					f32(col * tm.tile_w) + f32(tm.tile_w) / 2,
-					f32(row * tm.tile_h) + f32(tm.tile_h) / 2,
-					f32(tm.tile_w),
-					f32(tm.tile_h),
-				}
-
-				origin := rl.Vector2{f32(tm.tile_w) / 2, f32(tm.tile_h) / 2}
-
-				rl.DrawTexturePro(tm.tileset, src, dest, origin, f32(rotation) * 90, rl.WHITE)
 			}
 		}
 	}
@@ -243,37 +269,43 @@ tilemap_draw_layer :: proc(tm: ^Tilemap, camera: rl.Camera2D, layer: i32) {
 
 	for row in start_row ..< end_row {
 		for col in start_col ..< end_col {
-			tile_idx := tm.tiles[layer][row * tm.cols + col]
-			if tile_idx < 0 do continue
-			clean_idx := tile_idx & 0x0000FFFF
-			rotation := u8((tile_idx >> 16) & 0x3)
+			tile_val := tm.tiles[layer][row * tm.cols + col]
+			if tile_val < 0 do continue
+			raw_gid := u32(tile_val & 0x0000FFFF)
+			rotation := u8((tile_val >> 16) & 0x3)
 
-			ts_col := clean_idx % tm.ts_columns
-			ts_row := clean_idx / tm.ts_columns
-			src := rl.Rectangle {
-				f32(ts_col * tm.tile_w),
-				f32(ts_row * tm.tile_h),
-				f32(tm.tile_w),
-				f32(tm.tile_h),
+			for ts in tm.tileset {
+				if raw_gid >= ts.firstgid && raw_gid < ts.firstgid + u32(ts.tilecount) {
+					local_idx := i32(raw_gid - ts.firstgid)
+					ts_col := local_idx % ts.columns
+					ts_row := local_idx / ts.columns
+					src := rl.Rectangle {
+						f32(ts_col * tm.tile_w),
+						f32(ts_row * tm.tile_h),
+						f32(tm.tile_w),
+						f32(tm.tile_h),
+					}
+
+					dest := rl.Rectangle {
+						f32(col * tm.tile_w) + f32(tm.tile_w) / 2,
+						f32(row * tm.tile_h) + f32(tm.tile_h) / 2,
+						f32(tm.tile_w),
+						f32(tm.tile_h),
+					}
+
+					origin := rl.Vector2{f32(tm.tile_w) / 2, f32(tm.tile_h) / 2}
+
+					rl.DrawTexturePro(ts.texture, src, dest, origin, f32(rotation) * 90, rl.WHITE)
+					break
+				}
 			}
-
-			dest := rl.Rectangle {
-				f32(col * tm.tile_w) + f32(tm.tile_w) / 2,
-				f32(row * tm.tile_h) + f32(tm.tile_h) / 2,
-				f32(tm.tile_w),
-				f32(tm.tile_h),
-			}
-
-			origin := rl.Vector2{f32(tm.tile_w) / 2, f32(tm.tile_h) / 2}
-
-			rl.DrawTexturePro(tm.tileset, src, dest, origin, f32(rotation) * 90, rl.WHITE)
 		}
 	}
 }
 
-tilemap_is_solid :: proc(tm: ^Tilemap, tile_index: i32) -> bool {
-	if tile_index < 0 || int(tile_index) >= len(tm.solid) do return false
-	return tm.solid[tile_index]
+tilemap_is_solid :: proc(tm: ^Tilemap, gid: i32) -> bool {
+	if gid <= 0 || int(gid) > len(tm.solid) do return false
+	return tm.solid[gid - 1]
 }
 
 tilemap_destroy :: proc(tm: ^Tilemap) {
@@ -282,9 +314,13 @@ tilemap_destroy :: proc(tm: ^Tilemap) {
 	}
 	delete(tm.tiles)
 	delete(tm.solid)
+	for ts in tm.tileset {
+		delete(ts.image_rel)
+	}
+	delete(tm.tileset)
 }
 
-tilemap_save_tiled :: proc(path: string, tilemap: ^Tilemap, image_rel: string) -> bool {
+tilemap_save_tiled :: proc(path: string, tilemap: ^Tilemap) -> bool {
 	b: strings.Builder
 	strings.builder_init(&b)
 	defer delete(b.buf)
@@ -309,9 +345,9 @@ tilemap_save_tiled :: proc(path: string, tilemap: ^Tilemap, image_rel: string) -
 			gid: u32 = 0
 			if tile >= 0 {
 				rotation := u8((tile >> 16) & 0x3)
-				clean_idx := tile & 0x0000FFFF
+				raw_gid := u32(tile & 0x0000FFFF)
 				flags := rotation_to_tiled_flags(rotation)
-				gid = u32(clean_idx + 1) | flags
+				gid = raw_gid | flags
 			}
 			if i < count - 1 {
 				fmt.sbprintf(&b, "        %d,\n", gid)
@@ -329,19 +365,22 @@ tilemap_save_tiled :: proc(path: string, tilemap: ^Tilemap, image_rel: string) -
 
 	strings.write_string(&b, "  ],\n")
 	strings.write_string(&b, "  \"tilesets\": [\n")
-	strings.write_string(&b, "    {\n")
-	fmt.sbprintf(&b, "      \"firstgid\": %d,\n", 1)
-	fmt.sbprintf(&b, "      \"image\": \"%s\",\n", image_rel)
-	fmt.sbprintf(&b, "      \"titlewidth\": %d,\n", tilemap.tile_w)
-	fmt.sbprintf(&b, "      \"titleheight\": %d,\n", tilemap.tile_h)
-	fmt.sbprintf(&b, "      \"columns\": %d,\n", tilemap.ts_columns)
-	fmt.sbprintf(
-		&b,
-		"      \"tilecount\": %d,\n",
-		tilemap.ts_columns * (tilemap.tileset.height / tilemap.tile_h),
-	)
-	strings.write_string(&b, "      \"tiles\": []\n")
-	strings.write_string(&b, "    }\n")
+
+	for ts, ti in tilemap.tileset {
+		strings.write_string(&b, "    {\n")
+		fmt.sbprintf(&b, "      \"firstgid\": %d,\n", ts.firstgid)
+		fmt.sbprintf(&b, "      \"image\": \"%s\",\n", ts.image_rel)
+		fmt.sbprintf(&b, "      \"tilewidth\": %d,\n", tilemap.tile_w)
+		fmt.sbprintf(&b, "      \"tileheight\": %d,\n", tilemap.tile_h)
+		fmt.sbprintf(&b, "      \"columns\": %d,\n", ts.columns)
+		fmt.sbprintf(&b, "      \"tilecount\": %d,\n", ts.tilecount)
+		strings.write_string(&b, "      \"tiles\": []\n")
+		if ti < len(tilemap.tileset) - 1 {
+			strings.write_string(&b, "    },\n")
+		} else {
+			strings.write_string(&b, "    }\n")
+		}
+	}
 	strings.write_string(&b, "  ]\n")
 	strings.write_string(&b, "}\n")
 
@@ -349,7 +388,7 @@ tilemap_save_tiled :: proc(path: string, tilemap: ^Tilemap, image_rel: string) -
 	return os.write_entire_file(path, transmute([]byte)json_str) == nil
 }
 
-tilemap_load_tiled :: proc(path: string, tileset: rl.Texture2D) -> (Tilemap, bool) {
+tilemap_load_tiled :: proc(path: string, tilesets: []rl.Texture2D) -> (Tilemap, bool) {
 	bytes, err := os.read_entire_file(path, context.allocator)
 	if err != nil {
 		return {}, false
@@ -365,7 +404,8 @@ tilemap_load_tiled :: proc(path: string, tileset: rl.Texture2D) -> (Tilemap, boo
 	if tiled.orientation != "orthogonal" {
 		return {}, false
 	}
-	if len(tiled.tilesets) != 1 {
+
+	if len(tiled.tilesets) == 0 {
 		return {}, false
 	}
 
@@ -399,7 +439,12 @@ tilemap_load_tiled :: proc(path: string, tileset: rl.Texture2D) -> (Tilemap, boo
 		return {}, false
 	}
 
-	ts := tiled.tilesets[0]
+	max_gid := u32(0)
+	for ts in tiled.tilesets {
+		end := ts.firstgid + u32(ts.tilecount)
+		if end > max_gid {max_gid = end}
+	}
+
 
 	tm: Tilemap
 	tm.cols = tiled.width
@@ -407,9 +452,6 @@ tilemap_load_tiled :: proc(path: string, tileset: rl.Texture2D) -> (Tilemap, boo
 	tm.tile_w = tiled.tilewidth
 	tm.tile_h = tiled.tileheight
 	tm.layers = i32(tile_layer_count)
-	tm.tileset = tileset
-	tm.ts_columns = ts.columns
-	tm.ts_tilecount = ts.tilecount
 
 	tm.tiles = make([][]i32, tm.layers)
 	for i in 0 ..< tile_layer_count {
@@ -423,24 +465,42 @@ tilemap_load_tiled :: proc(path: string, tileset: rl.Texture2D) -> (Tilemap, boo
 			flags := gid & TILED_FLIP_MASK
 			rotation := tiled_flags_to_rotation(flags)
 			clean_gid := gid & ~TILED_FLIP_MASK
-			tile_idx := i32(clean_gid) - i32(ts.firstgid)
-			cells[cell_i] = (i32(rotation) << 16) | tile_idx
+			cells[cell_i] = (i32(rotation) << 16) | i32(clean_gid)
 		}
 		tm.tiles[i] = cells
 	}
 
-	ts_rows := tileset.height / tm.tile_h
-	tm.solid = make([]bool, int(ts.columns * ts_rows))
-	for tile in ts.tiles {
-		for prop in tile.properties {
-			if prop.name != "solid" do continue
-			if b, bok := prop.value.(json.Boolean); bok && bool(b) {
-				if int(tile.id) >= 0 && int(tile.id) < len(tm.solid) {
-					tm.solid[tile.id] = true
+	tm.solid = make([]bool, int(max_gid))
+	for ts in tiled.tilesets {
+		for tile in ts.tiles {
+			for prop in tile.properties {
+				if prop.name != "solid" do continue
+				if b, bok := prop.value.(json.Boolean); bok && bool(b) {
+					gid := int(ts.firstgid) + int(tile.id)
+					if gid > 0 && gid <= int(max_gid) {
+						tm.solid[gid - 1] = true
+					}
 				}
 			}
 		}
 	}
+
+	tex_count := min(len(tiled.tilesets), len(tilesets))
+	tm.tileset = make([]Tileset_Info, len(tiled.tilesets))
+	for ts, ti in tiled.tilesets {
+		tex: rl.Texture2D
+		if ti < tex_count {
+			tex = tilesets[ti]
+		}
+		tm.tileset[ti] = Tileset_Info {
+			texture   = tex,
+			firstgid  = ts.firstgid,
+			columns   = ts.columns,
+			tilecount = ts.tilecount,
+			image_rel = strings.clone(ts.image),
+		}
+	}
+
 
 	return tm, true
 }
@@ -456,17 +516,41 @@ tiled_get_tileset_image :: proc(path: string) -> (image_path: string, ok: bool) 
 	if json.unmarshal(bytes, &ref) != nil {
 		return "", false
 	}
-	defer delete(ref.tilesets)
-
-	//only supporting one tileset for now.
-	if len(ref.tilesets) != 1 {
-		for ts in ref.tilesets {
-			delete(ts.image)
-		}
-		return "", false
+	defer {
+		for ts in ref.tilesets {delete(ts.image)}
+		delete(ref.tilesets)
 	}
 
-	return ref.tilesets[0].image, true
+	if len(ref.tilesets) == 0 {return "", false}
+
+	return strings.clone(ref.tilesets[0].image), true
+}
+
+tiled_get_all_tileset_images :: proc(path: string) -> (images: []string, ok: bool) {
+	bytes, err := os.read_entire_file(path, context.allocator)
+	if err != nil {
+		return nil, false
+	}
+	defer delete(bytes)
+
+	ref: Tiled_Tileset_Ref
+	if json.unmarshal(bytes, &ref) != nil {
+		return nil, false
+	}
+	defer {
+		for ts in ref.tilesets {delete(ts.image)}
+		delete(ref.tilesets)
+	}
+
+	if len(ref.tilesets) == 0 {
+		return nil, false
+	}
+
+	result := make([]string, len(ref.tilesets))
+	for ts, i in ref.tilesets {
+		result[i] = strings.clone(ts.image)
+	}
+	return result, true
 }
 
 tiled_map_destroy :: proc(tiled: ^Tiled_Map) {
