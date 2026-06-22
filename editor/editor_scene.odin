@@ -4,6 +4,7 @@ import eng "../engine"
 import engCore "../engine/core"
 import proj "../project"
 import ui "./ui"
+import "core:fmt"
 import "core:path/filepath"
 import "core:strings"
 import util "utils"
@@ -72,8 +73,10 @@ editor_scene :: proc(root: string, project: proj.Project_Data) -> eng.Scene_Proc
 }
 
 editor_init :: proc(e: ^eng.Engine, data: rawptr) {
+	fmt.println("editor_init: start")
 	s := cast(^Editor_State)data
 
+	fmt.println("editor_init: before camera init")
 	eng.camera_init(
 		&s.edit_camera,
 		offset = {f32(e.renderer.logical_width) / 2, f32(e.renderer.logical_height) / 2},
@@ -81,60 +84,62 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 		trauma_decay = 0,
 		shake_max = 0,
 	)
+	fmt.println("editor_init: after camera init")
 	s.edit_camera.camera.target = {0, 0}
+	fmt.println("editor_init: before set min window size")
 	rl.SetWindowMinSize(PANEL_LEFT_WIDTH + PANEL_RIGHT_WIDTH + 400, PANEL_BOTTOM_HEIGHT + 400)
+	fmt.println("editor_init: after set min window size")
 
+	fmt.println("editor_init: make_render_target")
 	s.world_target = eng.make_render_target(&e.renderer)
+	fmt.println("editor_init: asset_browser_init")
 	s.asset_browser = asset_browser_init(s.project_root)
+	fmt.println("editor_init: make textures")
 	s.textures = make(map[string]rl.Texture2D)
+	fmt.println("editor_init: new_scene_dialog_init")
 	s.new_scene_dialog = new_scene_dialog_init()
+	fmt.println("editor_init: browse_scenes_dialog_init")
 	s.browse_scene_dialog = browse_scenes_dialog_init()
+	fmt.println("editor_init: tilemap_painter_init")
 	s.tilemap_painter = tilemap_painter_init()
+	fmt.println("editor_init: entity_placement_init")
 	s.entity_placer = entity_placement_init()
-
-	scene_path, _ := filepath.join({s.project_root, proj.SCENES_DIR, "level_01.json"})
-	defer delete(scene_path)
-
-	if loaded, ok := scene_load(scene_path); ok {
-		s.current_scene = loaded
-	} else {
-		s.current_scene = default_title_scene()
-		scene_save(scene_path, s.current_scene)
-	}
-
-	scene_load_resources(s)
-	tilemap_painter_on_scene_loaded(&s.tilemap_painter, s)
-	s.edit_camera.camera.target = {
-		f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w) / 2,
-		f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h) / 2,
-	}
 
 	s.current_scene = Scene_Data{}
 	if s.project.entry_scene != "" {
+		fmt.println("editor_init: s.project.entry_scene != \"\"")
 		scene_path, _ := filepath.join({s.project_root, proj.SCENES_DIR, s.project.entry_scene})
 		defer delete(scene_path)
 
 		if loaded, ok := scene_load(scene_path); ok {
+			fmt.println("editor_init: s.project.entry_scene != \"\", scene_load called")
 			s.current_scene = loaded
 		}
 	}
 
 	if s.current_scene.tilemap_path != "" {
 		scene_load_resources(s)
+		fmt.println("init: returned from scene_load_resources")
 		tilemap_painter_on_scene_loaded(&s.tilemap_painter, s)
-		s.edit_camera.camera.target = {
-			f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w) / 2,
-			f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h) / 2,
+		fmt.println("init: after painter on scene load")
+		if s.scene_tilemap.cols > 0 {
+			s.edit_camera.camera.target = {
+				f32(s.scene_tilemap.cols * s.scene_tilemap.tile_w) / 2,
+				f32(s.scene_tilemap.rows * s.scene_tilemap.tile_h) / 2,
+			}
 		}
+		fmt.println("init: after camera center")
 	} else {
 		s.new_scene_dialog.open = true
 	}
 
+	fmt.println("init: before input bindings")
 	eng.input_bind_keyboard(&e.input, act(.Undo), .Z)
 	eng.input_bind_keyboard(&e.input, act(.Redo), .Y)
 	eng.input_bind_keyboard(&e.input, act(.Grid), .G)
 	eng.input_bind_keyboard(&e.input, act(.Copy), .LEFT_ALT)
 	eng.input_bind_keyboard(&e.input, act(.Rotate), .R)
+	fmt.println("init: after input bindings")
 }
 
 editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
@@ -465,6 +470,7 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 			s.browse_scene_dialog.open = false
 		}
 	}
+
 }
 
 editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
@@ -509,7 +515,7 @@ compute_panel_layout :: proc() -> Panel_Layout {
 			PANEL_LEFT_WIDTH,
 			PANEL_TOP_HEIGHT,
 			sw - PANEL_LEFT_WIDTH - PANEL_RIGHT_WIDTH,
-			sh - PANEL_BOTTOM_HEIGHT,
+			sh - PANEL_BOTTOM_HEIGHT - PANEL_TOP_HEIGHT,
 		},
 	}
 }
@@ -525,24 +531,56 @@ scene_texture :: proc(s: ^Editor_State, path: string) -> rl.Texture2D {
 }
 
 scene_load_resources :: proc(s: ^Editor_State) {
+	fmt.println("scene_load_resources: start, tilemap_path: ", s.current_scene.tilemap_path)
 	tilemap_abs, _ := filepath.join({s.project_root, s.current_scene.tilemap_path})
-	defer delete(tilemap_abs)
+	fmt.println("scene_load_resources: tilemap_abs: ", tilemap_abs)
 
-	tileset_tex: rl.Texture2D
-	if image_rel, ok := eng.tiled_get_tileset_image(tilemap_abs); ok {
-		defer delete(image_rel)
-		tileset_dir := filepath.dir(tilemap_abs)
-		joined, _ := filepath.join({tileset_dir, image_rel})
-		defer delete(joined)
-		tileset_abs, _ := filepath.clean(joined)
-		defer delete(tileset_abs)
-		tileset_tex = scene_texture(s, tileset_abs)
+	image_rels, ok := eng.tiled_get_all_tileset_images(tilemap_abs)
+	fmt.println(
+		"scene_load_resources: tiled_get_all_tileset_images: ok = ",
+		ok,
+		"count = ",
+		len(image_rels),
+	)
+	if !ok {
+		rebuild_entity_sprites(s)
+		return
 	}
 
-	s.scene_tilemap, _ = eng.tilemap_load_tiled(tilemap_abs, tileset_tex)
-	//eng.tilemap_ensure_layers(&s.scene_tilemap, 2)
+	tileset_dir := filepath.dir(tilemap_abs)
 
+	tileset_texs := make([]rl.Texture2D, len(image_rels))
+
+	for rel, i in image_rels {
+		fmt.println("scene_load_resources: loading tileset: ", i, "rel =", rel)
+		joined, _ := filepath.join({tileset_dir, rel})
+		tileset_abs, _ := filepath.clean(joined)
+		delete(joined)
+		tileset_texs[i] = scene_texture(s, tileset_abs)
+		delete(tileset_abs)
+		delete(rel)
+	}
+	delete(image_rels)
+
+	fmt.println("scene_load_resources: calling destroy_tilemap")
+	eng.destroy_tilemap(&s.scene_tilemap)
+	fmt.println("scene_load_resources: calling tilemap_load_tiled")
+	s.scene_tilemap, _ = eng.tilemap_load_tiled(tilemap_abs, tileset_texs)
+
+	fmt.println(
+		"scene_load_resources: tilemap loaded, cols =",
+		s.scene_tilemap.cols,
+		"layers = ",
+		s.scene_tilemap.layers,
+	)
+
+	fmt.println("scene_load_resources: calling rebuild_entity_sprites")
 	rebuild_entity_sprites(s)
+	fmt.println("scene_load_resources: deleting tileset_texs")
+	delete(tileset_texs)
+	fmt.println("scene_load_resources: deleting tilemap_abs")
+	delete(tilemap_abs)
+	fmt.println("scene_load_resources: done")
 }
 
 rebuild_entity_sprites :: proc(s: ^Editor_State) {
@@ -551,6 +589,8 @@ rebuild_entity_sprites :: proc(s: ^Editor_State) {
 	s.entity_sprites = make([]eng.Sprite, len(s.current_scene.entities))
 
 	for entity, i in s.current_scene.entities {
+		if entity.sprite_sheet_path == "" do continue
+
 		sprite_abs, _ := filepath.join({s.project_root, entity.sprite_sheet_path})
 		defer delete(sprite_abs)
 
@@ -562,30 +602,5 @@ rebuild_entity_sprites :: proc(s: ^Editor_State) {
 			src     = {0, 0, f32(tex.width), f32(tex.height)},
 		}
 	}
-}
-
-
-//for testing for now this will be removed once the proper editor is up and working
-default_title_scene :: proc() -> Scene_Data {
-	scene := Scene_Data {
-		tilemap_path = strings.clone("resources/tilemaps/level_01.json"),
-		entities = make([]Entity_Data, 1),
-		camera = Camera_Config_Data{follow_speed = 6.0, zoom = 1.0},
-	}
-
-	scene.entities[0] = Entity_Data {
-		name              = strings.clone("player"),
-		position          = rl.Vector2{635, 201},
-		sprite_sheet_path = strings.clone("resources/textures/test.png"),
-		animation         = strings.clone("idle"),
-		tags              = make([]string, 2),
-		properties        = make(map[string]string),
-	}
-
-	scene.entities[0].tags[0] = strings.clone("player")
-	scene.entities[0].tags[1] = strings.clone("controllable")
-	scene.entities[0].properties[strings.clone("speed")] = strings.clone("200")
-
-	return scene
 }
 
