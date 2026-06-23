@@ -553,6 +553,22 @@ tiled_get_all_tileset_images :: proc(path: string) -> (images: []string, ok: boo
 	return result, true
 }
 
+tilemap_add_tileset :: proc(tm: ^Tilemap, info: Tileset_Info) {
+	new_tilesets := make([]Tileset_Info, len(tm.tileset) + 1)
+	copy(new_tilesets[:len(tm.tileset)], tm.tileset)
+	new_tilesets[len(tm.tileset)] = info
+	delete(tm.tileset)
+	tm.tileset = new_tilesets
+
+	new_max_gid := int(info.firstgid) + int(info.tilecount)
+	if new_max_gid > len(tm.solid) {
+		new_solid := make([]bool, new_max_gid)
+		copy(new_solid[:len(tm.solid)], tm.solid)
+		delete(tm.solid)
+		tm.solid = new_solid
+	}
+}
+
 tiled_map_destroy :: proc(tiled: ^Tiled_Map) {
 	delete(tiled.orientation)
 	for layer in tiled.layers {

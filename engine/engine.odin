@@ -56,6 +56,7 @@ shader_set_texture :: rend.shader_set_texture
 blit_shader :: rend.renderer_blit_shader
 //tilemap
 Tilemap :: rend.Tilemap
+Tileset_Info :: rend.Tileset_Info
 MAX_TILE_LAYERS :: rend.MAX_TILE_LAYERS
 create_tilemap :: rend.tilemap_create
 tilemap_set_tile :: rend.tilemap_set_tile
@@ -70,6 +71,7 @@ tilemap_load_tiled :: rend.tilemap_load_tiled
 tiled_get_tileset_image :: rend.tiled_get_tileset_image
 tiled_get_all_tileset_images :: rend.tiled_get_all_tileset_images
 tilemap_save_tiled :: rend.tilemap_save_tiled
+tilemap_add_tileset :: rend.tilemap_add_tileset
 //particle
 Particle_System :: rend.Particle_System
 Particle_Config :: rend.Particle_Config
