@@ -1,9 +1,11 @@
 package main
 
 import eng "../engine"
+import proj "../project"
 import ui "./ui"
 import "core:fmt"
 import "core:path/filepath"
+import "core:strings"
 import rl "vendor:raylib"
 
 Tilemap_Painter_State :: struct {
@@ -158,7 +160,7 @@ tilemap_painter_render_palette :: proc(
 	tileset_add_label: cstring = "Add Tileset"
 	tileset_add_btn := rl.Rectangle {
 		tools_rect.x + (tools_rect.width - layer_btn_w) - ui.PADDING,
-		tools_rect.y,
+		tools_rect.y + ui.ROW_HEIGHT + ui.PADDING,
 		layer_btn_w,
 		ui.ROW_HEIGHT,
 	}
@@ -167,17 +169,44 @@ tilemap_painter_render_palette :: proc(
 		if sel >= 0 && sel < len(es.asset_browser.assets) {
 			entry := es.asset_browser.assets[sel]
 			if entry.kind == .TEXTURE {
-				full_rel, _ := filepath.join({proj.RESOURCES_DIR, entry.rel_path})
-
-				tileset_tex := scene_texture(es, full_rel)
-				new_tileset := eng.Tileset_Info {
-					texture   = tileset_tex,
-					firstgid  = u32(len(tm.tileset) + 1),
-					columns   = ,
-					tilecount = i32,
-					image_rel = full_rel,
+				tex_abs, _ := filepath.join({es.project_root, proj.RESOURCES_DIR, entry.rel_path})
+				defer delete(tex_abs)
+				tileset_tex := scene_texture(es, tex_abs)
+				columns := tileset_tex.width / tm.tile_w
+				tilecount := columns * (tileset_tex.height / tm.tile_h)
+				firstgid: u32 = 1
+				if len(tm.tileset) > 0 {
+					last := tm.tileset[len(tm.tileset) - 1]
+					firstgid = last.firstgid + u32(last.tilecount)
 				}
-				scene_save_current(es)
+
+				tilemap_abs, _ := filepath.join({es.project_root, es.current_scene.tilemap_path})
+				tileset_dir := filepath.dir(tilemap_abs)
+				asset_abs, _ := filepath.join(
+					{es.project_root, proj.RESOURCES_DIR, entry.rel_path},
+				)
+				image_rel_raw, rel_err := filepath.rel(tileset_dir, asset_abs)
+				delete(tilemap_abs)
+				delete(asset_abs)
+
+				if rel_err == .None {
+					image_rel, was_alloc := strings.replace_all(image_rel_raw, "\\", "/")
+					if was_alloc {defer delete(image_rel)}
+					defer delete(image_rel_raw)
+
+					new_tileset := eng.Tileset_Info {
+						texture   = tileset_tex,
+						firstgid  = firstgid,
+						columns   = columns,
+						tilecount = tilecount,
+						image_rel = strings.clone(image_rel),
+					}
+
+					eng.tilemap_add_tileset(tm, new_tileset)
+					p.palette_scroll = 0
+					tilemap_save(es)
+					scene_save_current(es)
+				}
 			}
 		}
 	}
@@ -304,6 +333,7 @@ tilemap_painter_render_palette :: proc(
 
 	scroll_offset := p.palette_scroll
 
+	//TODO: need to make tilesets selectable so user doesnt have to scroll
 	for ts in tm.tileset {
 
 		ts_rows_count := ts.tilecount / ts.columns
@@ -320,7 +350,7 @@ tilemap_painter_render_palette :: proc(
 
 			dst := rl.Rectangle {
 				rect.x + f32(g_col) * tile_size,
-				y_off + f32(g_row) * tile_size - p.palette_scroll,
+				palette_y + f32(g_row) * tile_size - p.palette_scroll,
 				tile_size,
 				tile_size,
 			}
@@ -353,8 +383,8 @@ tilemap_painter_render_palette :: proc(
 		}
 
 		palette_y += f32(total_tile_rows) * tile_size
-		rl.EndScissorMode()
 	}
+	rl.EndScissorMode()
 }
 
 tilemap_save :: proc(s: ^Editor_State) {
