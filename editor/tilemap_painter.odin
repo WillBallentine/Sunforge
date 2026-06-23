@@ -155,6 +155,34 @@ tilemap_painter_render_palette :: proc(
 		rl.DrawRectangleLinesEx(erase_btn, 2, ui.ACCENT)
 	}
 
+	tileset_add_label: cstring = "Add Tileset"
+	tileset_add_btn := rl.Rectangle {
+		tools_rect.x + (tools_rect.width - layer_btn_w) - ui.PADDING,
+		tools_rect.y,
+		layer_btn_w,
+		ui.ROW_HEIGHT,
+	}
+	if ui.ui_button(tileset_add_btn, tileset_add_label) {
+		sel := es.asset_browser.selected
+		if sel >= 0 && sel < len(es.asset_browser.assets) {
+			entry := es.asset_browser.assets[sel]
+			if entry.kind == .TEXTURE {
+				full_rel, _ := filepath.join({proj.RESOURCES_DIR, entry.rel_path})
+
+				tileset_tex := scene_texture(es, full_rel)
+				new_tileset := eng.Tileset_Info {
+					texture   = tileset_tex,
+					firstgid  = u32(len(tm.tileset) + 1),
+					columns   = ,
+					tilecount = i32,
+					image_rel = full_rel,
+				}
+				scene_save_current(es)
+			}
+		}
+	}
+
+
 	for i in 0 ..< tm.layers {
 		bx := layer_x + f32(i) * (selector_w + ui.PADDING) + selector_w
 		if ui.ui_button({bx, layer_y + ui.PADDING, layer_btn_w, ui.ROW_HEIGHT}, layer_labels[i]) {
