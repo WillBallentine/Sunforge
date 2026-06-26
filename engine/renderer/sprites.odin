@@ -1,6 +1,7 @@
 package renderer
 
 import "core:encoding/json"
+import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
@@ -180,6 +181,56 @@ renderer_draw_sprite :: proc(
 	}
 
 	rl.DrawTexturePro(sprite.texture, src, dest, origin, rotation, tint)
+}
+
+sprite_sheet_save :: proc(sheet: ^Sprite_Sheet, save_path: string, tex_abs_path: string) -> bool {
+	b: strings.Builder
+	strings.builder_init(&b)
+	defer delete(b.buf)
+
+	json_dir := filepath.dir(save_path)
+	defer delete(json_dir)
+
+	image_rel_raw, rel_err := filepath.rel(json_dir, tex_abs_path)
+	if rel_err != .None do return false
+	defer delete(image_rel_raw)
+
+	image_rel, was_alloc := strings.replace_all(image_rel_raw, "\\", "/")
+	if was_alloc {defer delete(image_rel)}
+
+	strings.write_string(&b, "{\n")
+	fmt.sbprintf(&b, "  \"texture\": \"%s\",\n", image_rel)
+	fmt.sbprintf(&b, "  \"frame_w\": %d,\n", sheet.frame_w)
+	fmt.sbprintf(&b, "  \"frame_h\": %d,\n", sheet.frame_h)
+	fmt.sbprintf(&b, "  \"columns\": %d,\n", sheet.columns)
+	strings.write_string(&b, "  \"animations\": [\n")
+
+	anim_count := 0
+	for name, anim in sheet.animations {
+		anim_count += 1
+		_ = name; _ = anim
+	}
+	i := 0
+	for name, anim in sheet.animations {
+		comma: cstring = "," if i < anim_count - 1 else ""
+		fmt.sbprintf(
+			&b,
+			"    { \"name\": \"%s\", \"first_frame\": %d, \"fps\": %f, \"looping\": %v }%s\n",
+			name,
+			anim.first_frame_index,
+			anim.frame_count,
+			anim.fps,
+			anim.looping,
+			comma,
+		)
+		i += 1
+	}
+
+	strings.write_string(&b, "  ]\n")
+	strings.write_string(&b, "}\n")
+
+	json_str := strings.to_string(b)
+	return os.write_entire_file(save_path, transmute([]byte)json_str) == nil
 }
 
 sprite_sheet_destroy :: proc(sheet: ^Sprite_Sheet) {

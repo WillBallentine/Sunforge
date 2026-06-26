@@ -53,6 +53,7 @@ Editor_State :: struct {
 	active_tool:         util.Editor_Tools,
 	tilemap_painter:     Tilemap_Painter_State,
 	entity_placer:       Entity_Placement_State,
+	sptite_sheet_editor: Sprite_Sheet_Editor_State,
 }
 
 act :: #force_inline proc(a: Editor_Action) -> eng.Action_ID {
@@ -104,6 +105,7 @@ editor_init :: proc(e: ^eng.Engine, data: rawptr) {
 	s.tilemap_painter = tilemap_painter_init()
 	fmt.println("editor_init: entity_placement_init")
 	s.entity_placer = entity_placement_init()
+	s.sptite_sheet_editor = sprite_sheet_editor_init()
 
 	s.current_scene = Scene_Data{}
 	if s.project.entry_scene != "" {
@@ -197,6 +199,10 @@ editor_update :: proc(e: ^eng.Engine, data: rawptr, dt: f32) {
 	   s.entity_placer.selected >= 0 &&
 	   rl.IsMouseButtonReleased(.LEFT) {
 		scene_save_current(s)
+	}
+
+	if s.active_tool == .Sprite_Sheet {
+		sprite_sheet_editor_update(&s.sptite_sheet_editor, e, panels, e.clock.delta_time)
 	}
 
 	ui.ui_begin(&e.input)
@@ -342,6 +348,9 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 	tools_rw := tools.width - ui.PADDING * 2
 	tools_y := tools.y + ui.PADDING
 
+	if s.active_tool == .Sprite_Sheet {
+		sprite_sheet_editor_render_world(&s.sptite_sheet_editor, panels.world, s.edit_camera)
+	}
 	if s.active_tool == .Entity {
 		entity_rect := ui.ui_panel(panels.left, "Entities")
 		entity_list_render(&s.entity_placer, &s.current_scene, entity_rect, e.input.mouse.wheel)
@@ -397,6 +406,17 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		"Entity Tool",
 	) {
 		s.active_tool = .Entity
+	}
+	if ui.ui_button(
+		{
+			tools.x + (ui.PADDING * 2) + tools_btn_w,
+			tools.y + (ui.PADDING * 3) + (ui.ROW_HEIGHT * 2),
+			tools_btn_w,
+			ui.ROW_HEIGHT,
+		},
+		"Sprite Sheet",
+	) {
+		s.active_tool = .Sprite_Sheet
 	}
 	tools.y += ui.ROW_HEIGHT + ui.PADDING
 
@@ -454,6 +474,24 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 				}
 			}
 		}
+	} else if s.active_tool == .Sprite_Sheet {
+		x := inspector.x + ui.PADDING
+		rw := inspector.width - ui.PADDING * 2
+		half := (rw - ui.PADDING) / 2
+		y := inspector.y + (ui.ROW_HEIGHT * 4) + (ui.PADDING * 5)
+		if ui.ui_button({x, y, rw, ui.ROW_HEIGHT}, "Assign Texture") {
+			sprite_sheet_assign_texture(&s.sptite_sheet_editor, s)
+		}
+		y += ui.ROW_HEIGHT + ui.PADDING
+
+		if ui.ui_button({x, y, rw, ui.ROW_HEIGHT}, "Save Sheet") {
+			save_path := derive_save_path(&s.sptite_sheet_editor, s)
+			defer delete(save_path)
+			sprite_sheet_editor_save(&s.sptite_sheet_editor, save_path)
+		}
+		y += ui.ROW_HEIGHT + ui.PADDING
+
+		sprite_sheet_editor_render_inspector(&s.sptite_sheet_editor, inspector, e.clock.delta_time)
 	}
 
 	assets_rect := ui.ui_panel(panels.bottom, "Assets")
@@ -490,6 +528,7 @@ editor_destroy :: proc(e: ^eng.Engine, data: rawptr) {
 	browse_scene_dialog_destroy(&s.browse_scene_dialog)
 	tilemap_painter_destroy(&s.tilemap_painter)
 	entity_placement_destroy(&s.entity_placer)
+	sprite_sheet_editor_destroy(&s.sptite_sheet_editor)
 	free(data)
 }
 

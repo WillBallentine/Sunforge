@@ -40,6 +40,7 @@ begin_camera :: rend.renderer_begin_camera
 end_camera :: rend.renderer_end_camera
 Sprite :: rend.Sprite
 Sprite_Sheet :: rend.Sprite_Sheet
+sprite_sheet_save :: rend.sprite_sheet_save
 sprite_sheet_load :: rend.sprite_sheet_load
 sprite_sheet_get_animation :: rend.sprite_sheet_get_animation
 sprite_sheet_destroy :: rend.sprite_sheet_destroy
