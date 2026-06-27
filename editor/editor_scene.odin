@@ -478,7 +478,7 @@ editor_render :: proc(e: ^eng.Engine, data: rawptr) {
 		x := inspector.x + ui.PADDING
 		rw := inspector.width - ui.PADDING * 2
 		half := (rw - ui.PADDING) / 2
-		y := inspector.y + (ui.ROW_HEIGHT * 4) + (ui.PADDING * 5)
+		y := inspector.y + (ui.ROW_HEIGHT * 6) + (ui.PADDING * 5)
 		if ui.ui_button({x, y, rw, ui.ROW_HEIGHT}, "Assign Texture") {
 			sprite_sheet_assign_texture(&s.sptite_sheet_editor, s)
 		}
